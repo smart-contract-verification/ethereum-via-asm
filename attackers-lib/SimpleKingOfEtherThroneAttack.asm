@@ -1,4 +1,4 @@
-module SimpleReentrancyAttack
+module SimpleKingOfEtherThroneAttack
 
 
 import EVMlibrary
@@ -9,10 +9,6 @@ export *
 
 
 signature:
-
-	
-	dynamic controlled boolean_return : StackLayer -> Boolean
-
 	
 	static attacker : User
 	
@@ -21,8 +17,10 @@ signature:
 
 definitions:
 
-	rule r_Save_Att ($n in StackLayer) =
-		boolean_return($n) := boolean_return(global_state_layer)
+
+	rule r_Save_Att ($n in StackLayer) = 
+		skip
+	
 
 	rule r_Attack =
 		let ($cl = current_layer) in
@@ -30,7 +28,7 @@ definitions:
 				if executing_function($cl) = attack then
 					switch instruction_pointer($cl)
 						case 0 : 
-							r_Transaction[attacker, random_user, 0, random_function]
+							r_Transaction[attacker, random_user, 3, random_function]
 						case 1 : 
 							r_Ret[]
 					endswitch
@@ -48,12 +46,9 @@ definitions:
 			if executing_function($cl) != attack then
 				switch instruction_pointer($cl)
 					case 0 : 
-						r_Transaction[attacker, sender($cl), 0, random_function]
+						r_Throw[]
 					case 1 :
-						par
-							boolean_return(global_state_layer) := true
-							r_Ret[]
-						endpar
+						r_Ret[]
 				endswitch
 			endif
 		endlet

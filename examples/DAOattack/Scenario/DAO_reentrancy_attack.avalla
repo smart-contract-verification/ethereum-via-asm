@@ -4,9 +4,29 @@ scenario reentrancy_attack_scenario
 load ../DAO.asm
 
 
-
 set random_user := attacker;
 set random_function := attack;
+step
+set random_user := attacker;
+set random_function := attack;
+step
+set random_user := dao;
+set random_function := withdraw;
+step
+set random_user := dao;
+set random_function := withdraw;
+step
+set random_user := dao;
+set random_function := withdraw;
+step
+set random_user := dao;
+set random_function := withdraw;
+step
+set random_user := dao;
+set random_function := withdraw;
+step
+set random_user := dao;
+set random_function := withdraw;
 step
 set random_user := dao;
 set random_function := withdraw;

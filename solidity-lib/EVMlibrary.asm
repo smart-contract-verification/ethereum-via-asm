@@ -16,12 +16,15 @@ signature:
 	domain GeneralInteger subsetof Integer
 	
 	/* USER ATTRIBUTES */
-	dynamic controlled balance : User -> MoneyAmount 
+	dynamic controlled balance : Prod(User, StackLayer) -> MoneyAmount 
 	derived is_contract : User -> Boolean
 	
 	/* FUNCTIONS THAT ALLOW TRANSACTIONS */
+	dynamic controlled transaction : Boolean
 	dynamic controlled sender : StackLayer -> User 
+	dynamic controlled receiver : StackLayer -> User
 	dynamic controlled amount : StackLayer -> MoneyAmount
+	dynamic controlled function_call : StackLayer -> Function
 	
 	/* STACK MANAGEMENT */
 	dynamic controlled current_layer : StackLayer
@@ -31,12 +34,12 @@ signature:
 	dynamic controlled instruction_pointer : StackLayer -> InstructionPointer
 	dynamic controlled executing_contract : StackLayer -> User
 	
-	/* RETURN VALUES */
-	dynamic controlled boolean_return : Boolean
-	
 	/* GENERAL MONITORED FUNCTION */
 	monitored random_user : User
 	monitored random_function : Function
+	
+	/* EXCEPTION HANDLING */
+	dynamic controlled global_state_layer : StackLayer
 	
 	
 	
@@ -68,33 +71,48 @@ definitions:
 		
 	
 
+
+
+	macro rule r_Save_Env ($n in StackLayer) =
+		forall $u in User with true do 
+			balance($u, $n) := balance($u, global_state_layer)
 		
 		
 	/* 
 	 * TRANSACTION RULE
 	 */
-	macro rule r_Transaction($s in User, $r in User, $n in MoneyAmount, $f in Function) =
-		if balance($s) >= $n and $n >= 0 then
-			let ($cl = current_layer) in
-				par
-					balance($s) := balance($s) - $n // subtracts the amount from the sender user balance
-					balance($r) := balance($r) + $n // adds the amount to the dest user balance
-					if is_contract($r) then
-						par
-							sender($cl + 1) := $s // set the transition attribute to the sender user
-							amount($cl + 1) := $n // set the transaction attribute to the amount of coin to transfer
-							current_layer := $cl + 1
-							executing_contract($cl + 1) := $r
-							executing_function($cl + 1) := $f
-							instruction_pointer($cl + 1) := 0
-						endpar
-					endif
-					if is_contract($s) then 
-						instruction_pointer($cl) := instruction_pointer($cl) + 1
-					endif
-				endpar
-			endlet
-		endif
+	macro rule r_Transaction_Env =
+		par
+			if balance(sender(current_layer + 1), global_state_layer) >= amount(current_layer + 1) and amount(current_layer + 1) >= 0 then
+				let ($cl = current_layer) in
+					par
+						balance(sender($cl + 1), global_state_layer) := balance(sender($cl + 1), global_state_layer) - amount($cl + 1) // subtracts the amount from the sender user balance
+						balance(receiver($cl + 1), global_state_layer) := balance(receiver($cl + 1), global_state_layer) + amount($cl + 1) // adds the amount to the dest user balance
+						if is_contract(receiver($cl + 1)) then
+							par
+								current_layer := $cl + 1
+								executing_contract($cl + 1) := receiver($cl + 1)
+								executing_function($cl + 1) := function_call($cl + 1)
+								instruction_pointer($cl + 1) := 0
+							endpar
+						endif
+						if is_contract(sender($cl + 1)) then 
+							instruction_pointer($cl) := instruction_pointer($cl) + 1
+						endif
+					endpar
+				endlet
+			endif
+			transaction := false
+		endpar
+		
+	macro rule r_Transaction($s in User, $r in User, $n in MoneyAmount, $f in Function) = 
+		par
+			transaction := true
+			sender(current_layer + 1) := $s
+			receiver(current_layer + 1) := $r 
+			amount(current_layer + 1) := $n
+			function_call(current_layer + 1) := $f
+		endpar
 		
 		
 	/* 
@@ -102,6 +120,12 @@ definitions:
 	 */
 	macro rule r_Ret =
 		current_layer := current_layer - 1 
+		
+	macro rule r_Throw =
+		par
+			global_state_layer := global_state_layer - 1
+			r_Ret[]
+		endpar
 		
 	/*
 	 * REQUIRE RULE
@@ -111,9 +135,17 @@ definitions:
 			if $b then
 				instruction_pointer($cl) := instruction_pointer($cl) + 1
 			else 
-				r_Ret[]
+				r_Throw[]
 			endif
 		endlet
+		
+
+		
+		
+		
+
+	
+		
 		
 		
 

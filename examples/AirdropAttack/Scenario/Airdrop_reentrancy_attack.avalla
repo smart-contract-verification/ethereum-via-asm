@@ -7,6 +7,30 @@ load ../Airdrop.asm
 set random_user := attacker;
 set random_function := attack;
 step
+set random_user := attacker;
+set random_function := attack;
+step
+set random_user := airdrop;
+set random_function := receive_airdrop;
+step
+set random_user := airdrop;
+set random_function := receive_airdrop;
+step
+set random_user := airdrop;
+set random_function := receive_airdrop;
+step
+set random_user := airdrop;
+set random_function := receive_airdrop;
+step
+set random_user := airdrop;
+set random_function := receive_airdrop;
+step
+set random_user := airdrop;
+set random_function := receive_airdrop;
+step
+set random_user := airdrop;
+set random_function := receive_airdrop;
+step
 set random_user := airdrop;
 set random_function := receive_airdrop;
 step
@@ -32,7 +56,7 @@ set random_user := airdrop;
 set random_function := receive_airdrop;
 step
 set random_user := airdrop;
-set random_function := receive_airdrop;
+set random_function := fallback;
 step
 set random_user := airdrop;
 set random_function := fallback;
