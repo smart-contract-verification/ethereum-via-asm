@@ -1,8 +1,8 @@
 module SimpleKingOfEtherThroneAttack
 
 
-import EVMlibrary
-import ../Libraries/StandardLibrary
+import ../solidity/EVMlibrary
+import ../asmeta/StandardLibrary
 
 
 export *

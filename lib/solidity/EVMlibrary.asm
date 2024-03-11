@@ -1,7 +1,7 @@
 module EVMlibrary
 
 
-import ../Libraries/StandardLibrary
+import ../asmeta/StandardLibrary
 
 
 export *

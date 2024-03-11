@@ -1,9 +1,9 @@
 
 asm KingOfTheEtherThroneAttack
 
-import ../../Libraries/StandardLibrary
-import ../../SolidityLibraries/EVMlibrary
-import ../../SolidityLibraries/SimpleKingOfEtherThroneAttack
+import ../../lib/asmeta/StandardLibrary
+import ../../lib/solidity/EVMlibrary
+import ../../lib/attackers/SimpleKingOfEtherThroneAttack
 
 signature:
 	dynamic controlled king : StackLayer -> User
