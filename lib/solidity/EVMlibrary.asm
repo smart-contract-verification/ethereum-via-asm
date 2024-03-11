@@ -40,6 +40,7 @@ signature:
 	
 	/* EXCEPTION HANDLING */
 	dynamic controlled global_state_layer : StackLayer
+	dynamic controlled call_response : StackLayer -> Boolean
 	
 	
 	
@@ -58,7 +59,7 @@ definitions:
 	/* DOMAIN AND FUNCTION DEFINITION */
 	domain MoneyAmount = {-3 : 30}
 	domain StackLayer = {0 : 10}
-	domain InstructionPointer = {0 : 5}
+	domain InstructionPointer = {0 : 10}
 	domain GeneralInteger = {0 : 4}
 	
 	
@@ -103,6 +104,7 @@ definitions:
 				endlet
 			endif
 			transaction := false
+			call_response(current_layer + 1) := true
 		endpar
 		
 	macro rule r_Transaction($s in User, $r in User, $n in MoneyAmount, $f in Function) = 
@@ -124,6 +126,7 @@ definitions:
 	macro rule r_Throw =
 		par
 			global_state_layer := global_state_layer - 1
+			call_response(current_layer) := false
 			r_Ret[]
 		endpar
 		
