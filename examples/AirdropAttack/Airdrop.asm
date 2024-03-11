@@ -3,10 +3,11 @@ asm Airdrop
 
 
 
-import ../../Libraries/CTLlibrary
-import ../../SolidityLibraries/SimpleReentrancyAttack
-import ../../SolidityLibraries/EVMlibrary
-import ../../Libraries/StandardLibrary
+import ../../lib/asmeta/CTLlibrary
+import ../../lib/asmeta/StandardLibrary
+import ../../lib/attackers/SimpleReentrancyAttack
+import ../../lib/solidity/EVMlibrary
+
 
 
 signature:	
