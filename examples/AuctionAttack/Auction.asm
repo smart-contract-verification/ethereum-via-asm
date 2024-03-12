@@ -3,6 +3,7 @@ asm Auction
 import ../../lib/asmeta/StandardLibrary
 import ../../lib/asmeta/CTLlibrary
 import ../../lib/solidity/EVMlibrary
+import ../../lib/attackers/SimpleKingOfEtherThroneAttack
 
 signature:
 
@@ -35,9 +36,9 @@ definitions:
 						instruction_pointer(current_layer) := 4
 					endif
 				case 2 : 
-					r_Transaction[auction, sender(current_layer), currentBid(global_state_layer), fallback]
+					r_Transaction[auction, currentFrontrunner(global_state_layer), currentBid(global_state_layer), fallback]
 				case 3 : 
-					r_Require[call_response(current_layer)]
+					r_Require[call_response(current_layer+1)]
 				case 4 : 
 					par
 						currentFrontrunner(global_state_layer) := sender(current_layer) 
@@ -67,6 +68,7 @@ definitions:
 			seq
 				r_Save[global_state_layer + 1]
 				r_Save_Env[global_state_layer + 1]
+				r_Save_Att[global_state_layer + 1]
 				global_state_layer := global_state_layer + 1
 				r_Transaction_Env[]
 			endseq
@@ -78,7 +80,7 @@ definitions:
 						r_Save_Env[0]
 						global_state_layer := 0
 					endpar
-					r_Transaction[user, random_user, 1, random_function]
+					r_Transaction[user, random_user, random_amount, random_function]
 				endseq
 			else
 				switch executing_contract(current_layer)
@@ -87,6 +89,8 @@ definitions:
 							r_Bid[]
 							r_Fallback_Auction[]
 						endpar
+					case attacker :
+						r_Attacker[]
 					otherwise 
 						r_Ret[]
 				endswitch

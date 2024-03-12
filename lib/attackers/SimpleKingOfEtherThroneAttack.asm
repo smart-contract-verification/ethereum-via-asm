@@ -28,7 +28,7 @@ definitions:
 				if executing_function($cl) = attack then
 					switch instruction_pointer($cl)
 						case 0 : 
-							r_Transaction[attacker, random_user, 3, random_function]
+							r_Transaction[attacker, random_user, random_amount, random_function]
 						case 1 : 
 							r_Ret[]
 					endswitch

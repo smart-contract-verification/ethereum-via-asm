@@ -37,6 +37,7 @@ signature:
 	/* GENERAL MONITORED FUNCTION */
 	monitored random_user : User
 	monitored random_function : Function
+	monitored random_amount : MoneyAmount
 	
 	/* EXCEPTION HANDLING */
 	dynamic controlled global_state_layer : StackLayer
