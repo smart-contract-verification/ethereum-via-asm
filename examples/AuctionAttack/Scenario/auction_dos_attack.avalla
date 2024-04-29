@@ -1,0 +1,79 @@
+
+scenario auction_dos_attack
+
+load ../Auction.asm
+
+
+set random_user := attacker;
+set random_amount := 0;
+set random_function := attack;
+step
+set random_user := attacker;
+set random_amount := 0;
+set random_function := attack;
+step
+set random_user := auction;
+set random_amount := 2;
+set random_function := bid;
+step
+set random_user := auction;
+set random_amount := 2;
+set random_function := bid;
+step
+set random_user := auction;
+set random_amount := 2;
+set random_function := bid;
+step
+set random_user := auction;
+set random_amount := 2;
+set random_function := bid;
+step
+set random_user := auction;
+set random_amount := 2;
+set random_function := bid;
+step
+set random_user := auction;
+set random_amount := 2;
+set random_function := bid;
+step
+set random_user := auction;
+set random_amount := 2;
+set random_function := bid;
+step
+set random_user := auction;
+set random_amount := 2;
+set random_function := bid;
+step
+set random_user := auction;
+set random_amount := 3;
+set random_function := bid;
+step
+set random_user := auction;
+set random_amount := 3;
+set random_function := bid;
+step
+set random_user := auction;
+set random_amount := 3;
+set random_function := bid;
+step
+set random_user := auction;
+set random_amount := 3;
+set random_function := bid;
+step
+set random_user := auction;
+set random_amount := 3;
+set random_function := bid;
+step
+set random_user := auction;
+set random_amount := 3;
+set random_function := bid;
+step
+set random_user := auction;
+set random_amount := 3;
+set random_function := bid;
+step
+set random_user := auction;
+set random_amount := 3;
+set random_function := bid;
+step
+step

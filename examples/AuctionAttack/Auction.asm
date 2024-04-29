@@ -9,12 +9,16 @@ signature:
 
 	dynamic controlled currentFrontrunner : StackLayer -> User
 	dynamic controlled currentBid : StackLayer -> Integer
+	
+	dynamic controlled owner : StackLayer -> User
 
 
 	/* USER and METHODS */
 	static auction : User
+	static user_owner : User
 	
 	static bid : Function
+	static destroy : Function
 
 definitions:
 	
@@ -22,8 +26,20 @@ definitions:
 		par 
 			currentFrontrunner($n) := currentFrontrunner(global_state_layer)
 			currentBid($n) := currentBid(global_state_layer)
+			owner($n) := owner(global_state_layer)
 		endpar
 		
+		
+	rule r_Destroy =
+		if executing_function(current_layer) = destroy then
+			switch instruction_pointer(current_layer)
+				case 0 : 
+					r_Autodestroy[user_owner]
+				case 1 : 
+					r_Ret[]
+			endswitch
+		endif
+	
 	rule r_Bid = 
 		if executing_function(current_layer) = bid then 
 			switch instruction_pointer(current_layer)
@@ -63,6 +79,17 @@ definitions:
 		endif
 		
 		
+	CTLSPEC ag((sender(current_layer) = user and 
+		executing_function(current_layer) = bid and 
+		instruction_pointer(current_layer) = 0)
+		implies af(currentFrontrunner(global_state_layer) = user)
+	) 
+	
+	
+	invariant over sender : executing_function(current_layer) = destroy implies 
+					sender(current_layer) = owner(global_state_layer)
+		
+		
 	main rule r_Main = 	
 		if transaction then 
 			seq
@@ -87,6 +114,7 @@ definitions:
 					case auction :
 						par 
 							r_Bid[]
+							r_Destroy[]
 							r_Fallback_Auction[]
 						endpar
 					case attacker :
@@ -100,7 +128,7 @@ definitions:
 
 default init s0:
 
-		/*
+	/*
 	 * LIBRARY FUNCTION INITIZLIZATIONS
 	 */
 	function executing_function ($sl in StackLayer) = if $sl = 0 then none endif 
@@ -111,6 +139,8 @@ default init s0:
 	function balance($c in User, $n in StackLayer) = if $n = 0 then  10 endif
 	function global_state_layer = 0
 	function call_response($n in StackLayer) = false
+	function disabled($u in User, $sl in StackLayer) = false
+	function owner($sl in StackLayer) = user_owner
 	
 	/*
 	 * MODEL FUNCTION INITIALIZATION

@@ -1,0 +1,64 @@
+//// starting scenario
+
+scenario auction_unprotected_function_attack
+
+load ../Auction.asm
+
+check sender(0) = undef;
+check transaction = false;
+check current_layer = 0;
+check executing_function(0) = none;
+check global_state_layer = 0;
+check owner(0) = user_owner;
+set random_user := auction;
+set random_amount := 0;
+set random_function := destroy;
+step
+check sender(0) = undef;
+check transaction = true;
+check current_layer = 0;
+check executing_function(0) = none;
+check global_state_layer = 0;
+check owner(0) = user_owner;
+check currentFrontrunner(0) = undef;
+check function_call(1) = destroy;
+check balance(auction,0) = 10;
+check amount(1) = 0;
+check sender(1) = user;
+check balance(user_owner,0) = 10;
+check currentBid(0) = 0;
+check receiver(1) = auction;
+check balance(user,0) = 10;
+check balance(attacker,0) = 10;
+set random_user := auction;
+set random_amount := 0;
+set random_function := destroy;
+step
+check sender(0) = undef;
+check transaction = false;
+check current_layer = 1;
+check executing_function(0) = none;
+check global_state_layer = 1;
+check owner(0) = user_owner;
+check currentFrontrunner(0) = undef;
+check function_call(1) = destroy;
+check balance(auction,0) = 10;
+check amount(1) = 0;
+check sender(1) = user;
+check balance(user_owner,0) = 10;
+check currentBid(0) = 0;
+check receiver(1) = auction;
+check balance(user,0) = 10;
+check balance(attacker,0) = 10;
+check call_response(1) = true;
+check owner(1) = user_owner;
+check currentBid(1) = 0;
+check balance(attacker,1) = 10;
+check executing_contract(1) = auction;
+check executing_function(1) = destroy;
+check balance(auction,1) = 10;
+check instruction_pointer(1) = 0;
+check balance(user_owner,1) = 10;
+check balance(user,1) = 10;
+check currentFrontrunner(1) = undef;
+step

@@ -17,7 +17,9 @@ signature:
 	
 	/* USER ATTRIBUTES */
 	dynamic controlled balance : Prod(User, StackLayer) -> MoneyAmount 
+	dynamic controlled disabled : Prod(User, StackLayer) -> Boolean
 	derived is_contract : User -> Boolean
+
 	
 	/* FUNCTIONS THAT ALLOW TRANSACTIONS */
 	dynamic controlled transaction : Boolean
@@ -143,6 +145,13 @@ definitions:
 			endif
 		endlet
 		
+	macro rule r_Autodestroy ($u in User) = 
+		par
+			balance($u, global_state_layer) := balance($u, global_state_layer) + balance(executing_contract(current_layer), global_state_layer)
+			balance(executing_contract(current_layer), global_state_layer) := 0
+			disabled(executing_contract(current_layer), global_state_layer) := true
+			instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+		endpar
 
 		
 		
