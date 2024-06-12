@@ -117,6 +117,9 @@ definitions:
 			receiver(current_layer + 1) := $r 
 			amount(current_layer + 1) := $n
 			function_call(current_layer + 1) := $f
+			
+			r_Save_Env[global_state_layer + 1]
+			global_state_layer := global_state_layer + 1
 		endpar
 		
 		
@@ -124,7 +127,7 @@ definitions:
 	 * RETURN RULE
 	 */
 	macro rule r_Ret =
-		current_layer := current_layer - 1 
+		current_layer := current_layer - 1
 		
 	macro rule r_Throw =
 		par

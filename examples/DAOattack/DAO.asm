@@ -25,15 +25,10 @@ signature:
 	
 	static deposit : Function
 	static withdraw : Function 
-	
-	
-
 
 	
 	
 definitions:
-	
-	
 	
 	/* --------------------------------------------BANK CONTRACT IMPLEMENTATION-------------------------------------------- */
 
@@ -136,24 +131,22 @@ definitions:
 	 */ 
 	main rule r_Main = 	
 		if transaction then 
-				seq
-					r_Save[global_state_layer + 1]
-					r_Save_Env[global_state_layer + 1]
-					r_Save_Att[global_state_layer + 1]
-					global_state_layer := global_state_layer + 1
-					r_Transaction_Env[]
-				endseq
+			par
+				r_Save[global_state_layer]
+				r_Save_Att[global_state_layer]
+				r_Transaction_Env[]
+			endpar
 		else
 			if current_layer = 0 then
-				seq
-					par 
+				if global_state_layer = 0 then
+					r_Transaction[user, random_user, 1, random_function]
+				else 
+					par
 						r_Save[0]
 						r_Save_Env[0]
 						global_state_layer := 0
 					endpar
-					r_Transaction[user, random_user, 1, random_function]
-					
-				endseq
+				endif
 			else
 				switch executing_contract(current_layer) 
 					case dao : 
