@@ -159,6 +159,7 @@ default init s0:
 	function instruction_pointer ($sl in StackLayer) = if $sl = 0 then 0 endif
 	function current_layer = 0
 	function balance($c in User) = 10
+	function destroyed($u in User) = false
 	
 	/*
 	 * MODEL FUNCTION INITIALIZATION

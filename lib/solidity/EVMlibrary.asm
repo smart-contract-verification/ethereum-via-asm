@@ -119,12 +119,14 @@ definitions:
 		
 		
 	macro rule r_Selfdestruct ($u in User) =
-		par
-			balance(executing_contract(current_layer)) := 0
-			balance($u) := balance($u) + balance(executing_contract(current_layer))
-			destroyed(executing_contract(current_layer)) := true
-			r_Ret[]
-		endpar
+		if is_contract($u) then
+			par
+				balance(executing_contract(current_layer)) := 0
+				balance($u) := balance($u) + balance(executing_contract(current_layer))
+				destroyed(executing_contract(current_layer)) := true
+				r_Ret[]
+			endpar
+		endif
 		
 
 		
