@@ -76,7 +76,7 @@ definitions:
 	 * TRANSACTION RULE
 	 */
 	macro rule r_Transaction($s in User, $r in User, $n in MoneyAmount, $f in Function) =
-		if balance($s) >= $n and $n >= 0 and destroyed($r)then
+		if balance($s) >= $n and $n >= 0 and not destroyed($r)then
 			let ($cl = current_layer) in
 				par
 					balance($s) := balance($s) - $n // subtracts the amount from the sender user balance
