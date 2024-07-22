@@ -17,7 +17,9 @@ signature:
 	
 	/* USER ATTRIBUTES */
 	dynamic controlled balance : User -> MoneyAmount 
+	dynamic controlled destroyed : User -> Boolean
 	derived is_contract : User -> Boolean
+	
 	
 	/* FUNCTIONS THAT ALLOW TRANSACTIONS */
 	dynamic controlled sender : StackLayer -> User 
@@ -74,7 +76,7 @@ definitions:
 	 * TRANSACTION RULE
 	 */
 	macro rule r_Transaction($s in User, $r in User, $n in MoneyAmount, $f in Function) =
-		if balance($s) >= $n and $n >= 0 then
+		if balance($s) >= $n and $n >= 0 and destroyed($r)then
 			let ($cl = current_layer) in
 				par
 					balance($s) := balance($s) - $n // subtracts the amount from the sender user balance
@@ -115,6 +117,14 @@ definitions:
 			endif
 		endlet
 		
+		
+	macro rule r_Selfdestruct ($u in User) =
+		par
+			balance(executing_contract(current_layer)) := 0
+			balance($u) := balance($u) + balance(executing_contract(current_layer))
+			destroyed(executing_contract(current_layer)) := true
+			r_Ret[]
+		endpar
 		
 
 		
