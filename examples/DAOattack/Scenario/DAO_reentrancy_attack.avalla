@@ -4,56 +4,88 @@ scenario reentrancy_attack_scenario
 load ../DAO.asm
 
 
-
+set random_amount := 0;
 set random_user := attacker;
 set random_function := attack;
 step
+set random_amount := 0;
+set random_user := dao;
+set random_function := deposit;
+step
+set random_amount := 0;
+set random_user := dao;
+set random_function := deposit;
+step
+set random_amount := 0;
+set random_user := dao;
+set random_function := deposit;
+step
+set random_amount := 0;
+set random_user := dao;
+set random_function := deposit;
+step
+set random_amount := 0;
+set random_user := attacker;
+set random_function := attack;
+step
+set random_amount := 0;
 set random_user := dao;
 set random_function := withdraw;
 step
+set random_amount := 0;
 set random_user := dao;
 set random_function := withdraw;
 step
+set random_amount := 0;
 set random_user := dao;
 set random_function := withdraw;
 step
+set random_amount := 0;
 set random_user := dao;
 set random_function := withdraw;
 step
+set random_amount := 0;
 set random_user := dao;
 set random_function := withdraw;
 step
+set random_amount := 0;
 set random_user := dao;
 set random_function := withdraw;
 step
+set random_amount := 0;
 set random_user := dao;
 set random_function := withdraw;
 step
+set random_amount := 0;
 set random_user := dao;
 set random_function := withdraw;
 step
+set random_amount := 0;
 set random_user := dao;
 set random_function := withdraw;
 step
+set random_amount := 0;
 set random_user := dao;
-set random_function := fallback;
+set random_function := none;
 step
+set random_amount := 0;
 set random_user := dao;
-set random_function := fallback;
+set random_function := none;
 step
+set random_amount := 0;
 set random_user := dao;
-set random_function := fallback;
+set random_function := none;
 step
+set random_amount := 0;
 set random_user := dao;
-set random_function := fallback;
+set random_function := none;
 step
+set random_amount := 0;
 set random_user := dao;
-set random_function := fallback;
+set random_function := none;
 step
+set random_amount := 0;
 set random_user := dao;
-set random_function := fallback;
-step
-set random_user := dao;
-set random_function := fallback;
+set random_function := none;
 step
 step

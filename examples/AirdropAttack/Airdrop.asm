@@ -98,7 +98,7 @@ definitions:
 	 */ 
 	main rule r_Main = 	
 		if not is_contract(executing_contract(current_layer)) then
-			r_Transaction[user, random_user, 1, random_function]
+			r_Transaction[user, random_user, 0, random_function]
 		else
 			if executing_contract(current_layer) = airdrop then
 				par 
@@ -126,6 +126,13 @@ default init s0:
 	function current_layer = 0
 	function balance($c in User) = 10
 	function destroyed($u in User) = false
+		function payable($f in Function) = 
+		switch $f
+			case receive_airdrop : false
+			case none : true
+			otherwise false
+		endswitch
+	function exception = false
 	
 	/*
 	 * MODEL FUNCTION INITIALIZATION

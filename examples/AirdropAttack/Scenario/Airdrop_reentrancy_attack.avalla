@@ -35,30 +35,30 @@ set random_user := airdrop;
 set random_function := receive_airdrop;
 step
 set random_user := airdrop;
-set random_function := fallback;
+set random_function := none;
 step
 set random_user := airdrop;
-set random_function := fallback;
+set random_function := none;
 step
 set random_user := airdrop;
-set random_function := fallback;
+set random_function := none;
 step
 set random_user := airdrop;
-set random_function := fallback;
+set random_function := none;
 step
 set random_user := airdrop;
-set random_function := fallback;
+set random_function := none;
 step
 set random_user := airdrop;
-set random_function := fallback;
+set random_function := none;
 step
 set random_user := airdrop;
-set random_function := fallback;
+set random_function := none;
 step
 set random_user := airdrop;
-set random_function := fallback;
+set random_function := none;
 step
 set random_user := airdrop;
-set random_function := fallback;
+set random_function := none;
 step
 step

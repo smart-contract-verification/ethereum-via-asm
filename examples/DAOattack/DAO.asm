@@ -78,7 +78,7 @@ definitions:
 							endpar
 						case 1 : 
 							if customer_balance($scl) >= value_withdraw($cl) then
-								r_Transaction[dao, $scl, value_withdraw($cl), fallback]	
+								r_Transaction[dao, $scl, value_withdraw($cl), none]	
 							else
 								r_Ret[]
 							endif
@@ -117,6 +117,7 @@ definitions:
 	 */
 	 
 	 invariant over customer_balance : customer_balance(attacker) >= 0
+	 invariant over exception : exception = false
 	
 	
 	/*
@@ -131,7 +132,7 @@ definitions:
 	 */ 
 	main rule r_Main = 	
 		if not is_contract(executing_contract(current_layer)) then
-			r_Transaction[user, random_user, 1, random_function]
+			r_Transaction[user, random_user, random_amount, random_function]
 		else
 			if executing_contract(current_layer) = dao then
 				par 
@@ -160,6 +161,14 @@ default init s0:
 	function current_layer = 0
 	function balance($c in User) = 10
 	function destroyed($u in User) = false
+	function payable($f in Function) = 
+		switch $f
+			case deposit : true
+			case withdraw : false
+			case none : true
+			otherwise false
+		endswitch
+	function exception = false
 	
 	/*
 	 * MODEL FUNCTION INITIALIZATION

@@ -20,6 +20,9 @@ signature:
 	dynamic controlled destroyed : User -> Boolean
 	derived is_contract : User -> Boolean
 	
+	/* METHOD ATTRIBUTE */
+	dynamic controlled payable : Function -> Boolean
+	
 	
 	/* FUNCTIONS THAT ALLOW TRANSACTIONS */
 	dynamic controlled sender : StackLayer -> User 
@@ -39,11 +42,13 @@ signature:
 	/* GENERAL MONITORED FUNCTION */
 	monitored random_user : User
 	monitored random_function : Function
+	monitored random_amount : MoneyAmount
 	
+	/* EXCEPTION */
+	dynamic controlled exception :Boolean
 	
 	
 	/* ABSTRACT DOMAIN DEFINITION FOR EVM */
-	static fallback : Function
 	static none : Function
 	
 	static user : User
@@ -77,25 +82,27 @@ definitions:
 	 */
 	macro rule r_Transaction($s in User, $r in User, $n in MoneyAmount, $f in Function) =
 		if balance($s) >= $n and $n >= 0 and not destroyed($r)then
-			let ($cl = current_layer) in
-				par
-					balance($s) := balance($s) - $n // subtracts the amount from the sender user balance
-					balance($r) := balance($r) + $n // adds the amount to the dest user balance
-					if is_contract($r) then
-						par
-							sender($cl + 1) := $s // set the transition attribute to the sender user
-							amount($cl + 1) := $n // set the transaction attribute to the amount of coin to transfer
-							current_layer := $cl + 1
-							executing_contract($cl + 1) := $r
-							executing_function($cl + 1) := $f
-							instruction_pointer($cl + 1) := 0
-						endpar
-					endif
-					if is_contract($s) then 
-						instruction_pointer($cl) := instruction_pointer($cl) + 1
-					endif
-				endpar
-			endlet
+			if (is_contract($r) and $n > 0) implies payable($f) then
+				let ($cl = current_layer) in
+					par
+						balance($s) := balance($s) - $n // subtracts the amount from the sender user balance
+						balance($r) := balance($r) + $n // adds the amount to the dest user balance
+						if is_contract($r) then
+							par
+								sender($cl + 1) := $s // set the transition attribute to the sender user
+								amount($cl + 1) := $n // set the transaction attribute to the amount of coin to transfer
+								current_layer := $cl + 1
+								executing_contract($cl + 1) := $r
+								executing_function($cl + 1) := $f
+								instruction_pointer($cl + 1) := 0
+							endpar
+						endif
+						if is_contract($s) then 
+							instruction_pointer($cl) := instruction_pointer($cl) + 1
+						endif
+					endpar
+				endlet
+			endif
 		endif
 		
 		
@@ -113,7 +120,8 @@ definitions:
 			if $b then
 				instruction_pointer($cl) := instruction_pointer($cl) + 1
 			else 
-				r_Ret[]
+				
+				exception := true
 			endif
 		endlet
 		

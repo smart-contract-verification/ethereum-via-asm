@@ -1,0 +1,72 @@
+
+scenario DenialOfService
+
+
+load ../StateBasedDAO.asm
+
+
+set random_amount := 3;
+set random_user := state_dao;
+set random_function := deposit;
+step
+set random_amount := 3;
+set random_user := state_dao;
+set random_function := deposit;
+step
+set random_amount := 3;
+set random_user := state_dao;
+set random_function := deposit;
+step
+set random_amount := 3;
+set random_user := state_dao;
+set random_function := deposit;
+step
+set random_amount := 3;
+set random_user := state_dao;
+set random_function := deposit;
+step
+set random_amount := 3;
+set random_user := state_dao;
+set random_function := deposit;
+step
+set random_amount := 3;
+set random_user := state_dao;
+set random_function := deposit;
+step
+set random_amount := 0;
+set random_user := state_dao;
+set random_function := withdraw;
+step
+set random_amount := 0;
+set random_user := state_dao;
+set random_function := withdraw;
+step
+set random_amount := 0;
+set random_user := state_dao;
+set random_function := withdraw;
+step
+set random_amount := 0;
+set random_user := state_dao;
+set random_function := withdraw;
+step
+set random_amount := 0;
+set random_user := state_dao;
+set random_function := withdraw;
+step
+set random_amount := 0;
+set random_user := state_dao;
+set random_function := withdraw;
+step
+set random_amount := 0;
+set random_user := state_dao;
+set random_function := withdraw;
+step
+set random_amount := 4;
+set random_user := state_dao;
+set random_function := deposit;
+step
+set random_amount := 4;
+set random_user := state_dao;
+set random_function := deposit;
+step
+step
