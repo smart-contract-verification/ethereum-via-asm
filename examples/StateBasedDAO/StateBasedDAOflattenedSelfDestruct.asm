@@ -292,7 +292,7 @@ definitions:
 					let ($cl = current_layer) in
 						let ($s = state_dao, $r = sender($cl), $f = none) in
 							par 
-								if balance($s) >= customer_balance(sender($cl)) and $s != $r then 
+								if balance($s) >= customer_balance(sender($cl)) and customer_balance(sender($cl))>=0 and $s != $r then 
 									par
 										balance($s) := balance($s) - customer_balance($r) 
 										balance($r) := balance($r) + customer_balance($r)
@@ -375,7 +375,7 @@ definitions:
 	 */
 	CTLSPEC ag((balance(state_dao) > 3 and exception = false and current_layer = 0) implies ef(exception = false and balance(state_dao) <= 3))
 	CTLSPEC ag((state = INTRANSITION and exception = false) implies ef(state = INITIALSTATE and exception = false))
-
+	CTLSPEC ag((forall $u in User with exception=false implies customer_balance($u) >= 0))
 		
 	
 	/*
@@ -386,7 +386,7 @@ definitions:
 			if current_layer = 0 then
 				let ($s = user, $r = random_user, $n = random_amount, $f = random_function) in
 					par
-						if balance($s) >= $n and $s != $r then 
+						if balance($s) >= $n and $n >= 0 and $s != $r then 
 							par
 								balance($s) := balance($s) - $n 
 								balance($r) := balance($r) + $n
