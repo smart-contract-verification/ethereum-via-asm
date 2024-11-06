@@ -1,13 +1,10 @@
-asm StateBasedDAOflattened
+asm StateBasedDAOflattenedSelfDestruct
 
 
 
 
 import ../../lib/asmeta/CTLlibrary
 import ../../lib/asmeta/StandardLibrary
-//import ../../lib/attackers/SelfdestructAttacker
-//import ../../lib/solidity/EVMlibrary
-
 
 
 signature:	
@@ -18,7 +15,8 @@ signature:
 
 
 
-	enum domain State = {INTRANSITION, INITIALSTATE}
+	/* --------------------------------------------LIBRARY MODEL DOMAINS-------------------------------------------- */
+	
 	
 	
 	
@@ -28,6 +26,15 @@ signature:
 	domain StackLayer subsetof Integer
 	domain InstructionPointer subsetof Integer
 	domain GeneralInteger subsetof Integer
+	
+	
+	
+	/* --------------------------------------------CONTRACT MODEL DOMANIS-------------------------------------------- */
+	
+	enum domain State = {INTRANSITION, INITIALSTATE}
+	
+	
+	/* --------------------------------------------LIBRARY MODEL FUNCTIONS-------------------------------------------- */
 	
 	/* USER ATTRIBUTES */
 	dynamic controlled balance : User -> MoneyAmount 
@@ -59,7 +66,8 @@ signature:
 	monitored random_amount : MoneyAmount
 	
 	/* EXCEPTION */
-	dynamic controlled exception :Boolean
+	dynamic controlled exception : Boolean
+	
 	
 	
 	/* ABSTRACT DOMAIN DEFINITION FOR EVM */
@@ -69,7 +77,11 @@ signature:
 	
 	
 	
+
 	
+	
+	
+	/* --------------------------------------------ATTACKER MODEL FUNCTIONS-------------------------------------------- */
 	
 	
 	controlled input_user : User
@@ -77,11 +89,12 @@ signature:
 	static attacker : User
 	
 	static attack : Function
+
 	
 	
 	
 	
-	
+	/* --------------------------------------------CONTRACT MODEL FUNCTIONS-------------------------------------------- */
 
 	/* CONTRACT ATTRIBUTES */
 	dynamic controlled customer_balance : User -> MoneyAmount 
@@ -102,9 +115,11 @@ signature:
 	
 definitions:
 
+	/* --------------------------------------------LIBRARY MODEL-------------------------------------------- */
+
 
 	/* DOMAIN AND FUNCTION DEFINITION */
-	domain MoneyAmount = {0 : 4}
+	domain MoneyAmount = {0 : 5}
 	domain StackLayer = {0 : 2}
 	domain InstructionPointer = {0 : 7}
 	domain GeneralInteger = {0 : 0}
@@ -118,43 +133,43 @@ definitions:
 		endswitch
 		
 
-	rule r_Transaction ($s in User, $r in User, $n in MoneyAmount, $f in Function) =
-		par
-			if balance($s) >= 0 then 
-				par
-					balance($s) := balance($s) - $n 
-					balance($r) := balance($r) + $n
-				endpar
-			else 
-				exception := true
-			endif
-		
-			
-			if is_contract($r) then
-				par
-					sender(current_layer + 1) := $s // set the transition attribute to the sender user
-					amount(current_layer + 1) := $n // set the transaction attribute to the amount of coin to transfer
-					current_layer := current_layer + 1
-					executing_contract(current_layer + 1) := $r
-					executing_function(current_layer + 1) := $f
-					instruction_pointer(current_layer + 1) := 0
-				endpar
-			endif
-			
-			if is_contract($s) then 
-				instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
-			endif
-			
-			
-			if destroyed($r) then 
-				exception := true
-			endif
-			
-			
-			if is_contract($r) and $n > 0 and not payable($f) then
-				exception := true
-			endif
-		endpar
+//	rule r_Transaction ($s in User, $r in User, $n in MoneyAmount, $f in Function) =
+//		par
+//			if balance($s) >= $n then 
+//				par
+//					balance($s) := balance($s) - $n 
+//					balance($r) := balance($r) + $n
+//				endpar
+//			else 
+//				exception := true
+//			endif
+//		
+//			
+//			if is_contract($r) then
+//				par
+//					sender(current_layer + 1) := $s // set the transition attribute to the sender user
+//					amount(current_layer + 1) := $n // set the transaction attribute to the amount of coin to transfer
+//					current_layer := current_layer + 1
+//					executing_contract(current_layer + 1) := $r
+//					executing_function(current_layer + 1) := $f
+//					instruction_pointer(current_layer + 1) := 0
+//				endpar
+//			endif
+//			
+//			if is_contract($s) then 
+//				instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+//			endif
+//			
+//			
+//			if destroyed($r) then 
+//				exception := true
+//			endif
+//			
+//			
+//			if is_contract($r) and $n > 0 and not payable($f) then
+//				exception := true
+//			endif
+//		endpar
 		
 	/* 
 	 * RETURN RULE
@@ -170,8 +185,10 @@ definitions:
 			if $b then
 				instruction_pointer($cl) := instruction_pointer($cl) + 1
 			else 
-				
-				exception := true
+				par
+					r_Ret[]
+					exception := true
+				endpar
 			endif
 		endlet
 		
@@ -189,7 +206,7 @@ definitions:
 		
 		
 		
-	/* --------------------------------------------ATTACKER CONTRACT-------------------------------------------- */
+	/* --------------------------------------------ATTACKER MODEL-------------------------------------------- */
 		
 		
 		
@@ -221,7 +238,7 @@ definitions:
 	
 	
 	
-	/* --------------------------------------------CONTRACT IMPLEMENTATION-------------------------------------------- */
+	/* --------------------------------------------CONTRACT MODEL-------------------------------------------- */
 
 	/* 
 	 * DEPOSIT FUNCTION RULE
@@ -238,7 +255,7 @@ definitions:
 						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
 					endpar
 				case 2 : 
-					r_Require[balance(executing_contract(current_layer)) < 2]
+					r_Require[balance(state_dao) <= 3]
 				case 3 : 
 					par
 						customer_balance(sender(current_layer)) := customer_balance(sender(current_layer)) + amount(current_layer)
@@ -272,10 +289,49 @@ definitions:
 				case 2 : 
 					r_Require[customer_balance(sender(current_layer)) > 0]
 				case 3 : 
-					r_Transaction[state_dao, sender(current_layer), customer_balance(sender(current_layer)), none]
+					let ($cl = current_layer) in
+						let ($s = state_dao, $r = sender($cl), $f = none) in
+							par 
+								if balance($s) >= customer_balance(sender($cl)) and $s != $r then 
+									par
+										balance($s) := balance($s) - customer_balance($r) 
+										balance($r) := balance($r) + customer_balance($r)
+									endpar
+								else 
+									exception := true
+								endif
+							
+								
+								if is_contract($r) then
+									par
+										sender(current_layer + 1) := $s // set the transition attribute to the sender user
+										amount(current_layer + 1) := customer_balance($r) // set the transaction attribute to the amount of coin to transfer
+										current_layer := current_layer + 1
+										executing_contract(current_layer + 1) := $r
+										executing_function(current_layer + 1) := $f
+										instruction_pointer(current_layer + 1) := 0
+									endpar
+								endif
+								
+								if is_contract($s) then 
+									instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+								endif
+								
+								
+								if destroyed($r) then 
+									exception := true
+								endif
+								
+								
+								if is_contract($r) and customer_balance($r) > 0 and not payable($f) then
+									exception := true
+								endif
+							endpar
+						endlet
+					endlet
 				case 4 :
 					par
-						customer_balance(sender(current_layer)) := 0
+						customer_balance($r) := 0
 						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
 					endpar
 				case 5 :
@@ -289,7 +345,6 @@ definitions:
 					r_Ret[]
 			endswitch
 		endif
-		
 	
 	
 	rule r_Fallback =
@@ -318,7 +373,7 @@ definitions:
 	/*
 	 * CTLSPEC
 	 */
-	CTLSPEC ag((balance(state_dao) >= 2 and exception = false)implies ef(balance(state_dao) < 2 and exception = false))
+	CTLSPEC ag((balance(state_dao) > 3 and exception = false and current_layer = 0) implies ef(exception = false and balance(state_dao) <= 3))
 	CTLSPEC ag((state = INTRANSITION and exception = false) implies ef(state = INITIALSTATE and exception = false))
 
 		
@@ -327,19 +382,59 @@ definitions:
 	 * MAIN 
 	 */ 
 	main rule r_Main = 	
-		if current_layer = 0 then
-			r_Transaction[user, random_user, random_amount, random_function]
-		else
-			if executing_contract(current_layer) = state_dao then
-				par 
-					r_Deposit[]
-					r_Withdraw[]
-				endpar
-			else 
-				par
-					r_Attack[]
-					r_Fallback_attacker[]
-				endpar
+		if not exception then
+			if current_layer = 0 then
+				let ($s = user, $r = random_user, $n = random_amount, $f = random_function) in
+					par
+						if balance($s) >= $n and $s != $r then 
+							par
+								balance($s) := balance($s) - $n 
+								balance($r) := balance($r) + $n
+							endpar
+						else 
+							exception := true
+						endif
+					
+						
+						if is_contract($r) then
+							par
+								sender(current_layer + 1) := $s // set the transition attribute to the sender user
+								amount(current_layer + 1) := $n // set the transaction attribute to the amount of coin to transfer
+								current_layer := current_layer + 1
+								executing_contract(current_layer + 1) := $r
+								executing_function(current_layer + 1) := $f
+								instruction_pointer(current_layer + 1) := 0
+							endpar
+						endif
+						
+						if is_contract($s) then 
+							instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+						endif
+						
+						
+						if destroyed($r) then 
+							exception := true
+						endif
+						
+						
+						if is_contract($r) and $n > 0 and not payable($f) then
+							exception := true
+						endif
+					endpar
+				endlet
+			else
+				if executing_contract(current_layer) = state_dao then
+					par 
+						r_Deposit[]
+						r_Withdraw[]
+						r_Fallback[]
+					endpar
+				else 
+					par
+						r_Attack[]
+						r_Fallback_attacker[]
+					endpar
+				endif
 			endif
 		endif
 			
@@ -357,7 +452,7 @@ default init s0:
 	function executing_contract ($cl in StackLayer) = if $cl = 0 then user endif
 	function instruction_pointer ($sl in StackLayer) = if $sl = 0 then 0 endif
 	function current_layer = 0
-	function balance($c in User) = 1
+	function balance($c in User) = 2
 	function destroyed($u in User) = false
 	function payable($f in Function) = 
 		switch $f
