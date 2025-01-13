@@ -20,10 +20,11 @@ signature:
 	
 	/* METHODS DEFINITIONS AND USER DEFINITIONS */
 	static airdrop : User
+    static undef_user : User
 	
 	static receive_airdrop : Function
 	static can_receive_airdrop : Function
-
+    static undef_function : Function
 
 	
 	
@@ -104,40 +105,45 @@ definitions:
 	/*
 	 * MAIN 
 	 */ 
-	main rule r_Main = 	
-		if transaction then 
-			seq
-				r_Save[global_state_layer + 1]
-				r_Save_Env[global_state_layer + 1]
-				r_Save_Att[global_state_layer + 1]
-				global_state_layer := global_state_layer + 1
-				r_Transaction_Env[]
-			endseq
-		else
-			if current_layer = 0 then
-				seq
-					par 
-						r_Save[0]
-						r_Save_Env[0]
-						global_state_layer := 0
-					endpar
-					r_Transaction[user, random_user, 1, random_function]
-				endseq
-			else
-				switch executing_contract(current_layer) 
-					case airdrop :
-						par 
-							r_Receive_airdrop[]
-							r_Fallback_Airdrop[]
-						endpar
-					case attacker :
-						r_Attacker[]
-					otherwise 
-						r_Ret[]
-				endswitch
-			endif
-		endif
-			
+	main rule r_Main =
+        if random_user (stage) != undef_user
+        then
+            par
+                if transaction then 
+                    seq
+                        r_Save[global_state_layer + 1]
+                        r_Save_Env[global_state_layer + 1]
+                        r_Save_Att[global_state_layer + 1]
+                        global_state_layer := global_state_layer + 1
+                        r_Transaction_Env[]
+                    endseq
+                else
+                    if current_layer = 0 then
+                        seq
+                            par 
+                                r_Save[0]
+                                r_Save_Env[0]
+                                global_state_layer := 0
+                            endpar
+                            r_Transaction[user, random_user (stage), 1, random_function (stage)]
+                        endseq
+                    else
+                        switch executing_contract(current_layer) 
+                            case airdrop :
+                                par 
+                                    r_Receive_airdrop[]
+                                    r_Fallback_Airdrop[]
+                                endpar
+                            case attacker :
+                                r_Attacker[]
+                            otherwise 
+                                r_Ret[]
+                        endswitch
+                    endif
+                endif
+                stage := stage + 1
+            endpar
+        endif
 		
 
 
@@ -145,23 +151,35 @@ definitions:
 
 
 default init s0:
+    function stage = 0
+
 	/*
 	 * LIBRARY FUNCTION INITIZLIZATIONS
 	 */
-	function executing_function ($sl in StackLayer) = if $sl = 0 then none endif 
-	function executing_contract ($cl in StackLayer) = if $cl = 0 then user endif
-	function instruction_pointer ($sl in StackLayer) = if $sl = 0 then 0 endif
+	function executing_function ($sl in StackLayer) = if $sl = 0 then none else undef_function endif 
+	function executing_contract ($cl in StackLayer) = if $cl = 0 then user else undef_user endif
+
+    // use recognisable int value (-999999) instead of 'undef'
+	function instruction_pointer ($sl in StackLayer) = if $sl = 0 then 0 else -999999 endif
+
 	function current_layer = 0
 	function transaction = false
-	function balance($c in User, $n in StackLayer) = if $n = 0 then  10 endif
+
+    // use recognisable int value (-999999) instead of 'undef'
+	function balance($c in User, $n in StackLayer) = if $n = 0 then 10 else -999999 endif
 	function global_state_layer = 0
 	
 	/*
 	 * MODEL FUNCTION INITIALIZATION
 	 */
-	function user_balance($c in User, $n in StackLayer) = if $n = 0 then  0 endif
-	function received_airdrop($u in User, $n in StackLayer) = if $n = 0 then false endif
-	function airdrop_amount ($n in StackLayer) = if $n = 0 then 3 endif
+    // use recognisable int value (-999999) instead of 'undef'
+	function user_balance($c in User, $n in StackLayer) = if $n = 0 then  0 else -999999 endif
+	
+    // !!! in place of 'undef', would true be any better than false in 'else' branch ?
+    function received_airdrop($u in User, $n in StackLayer) = if $n = 0 then false else false endif    // if $n = 0 then false endif
+
+    // use recognisable int value (-999999) instead of 'undef'
+	function airdrop_amount ($n in StackLayer) = if $n = 0 then 3 else -999999 endif
 		
 
 	

@@ -30,7 +30,7 @@ definitions:
 				if executing_function($cl) = attack then
 					switch instruction_pointer($cl)
 						case 0 : 
-							r_Transaction[attacker, random_user, 0, random_function]
+							r_Transaction[attacker, random_user (stage), 0, random_function (stage)]
 						case 1 : 
 							r_Ret[]
 					endswitch
@@ -48,7 +48,7 @@ definitions:
 			if executing_function($cl) != attack then
 				switch instruction_pointer($cl)
 					case 0 : 
-						r_Transaction[attacker, sender($cl), 0, random_function]
+						r_Transaction[attacker, sender($cl), 0, random_function (stage)]
 					case 1 :
 						par
 							boolean_return(global_state_layer) := true

@@ -18,7 +18,7 @@ signature:
 	/* USER ATTRIBUTES */
 	dynamic controlled balance : Prod(User, StackLayer) -> MoneyAmount 
 	dynamic controlled disabled : Prod(User, StackLayer) -> Boolean
-	derived is_contract : User -> Boolean
+	static is_contract : User -> Boolean
 
 	
 	/* FUNCTIONS THAT ALLOW TRANSACTIONS */
@@ -36,10 +36,14 @@ signature:
 	dynamic controlled instruction_pointer : StackLayer -> InstructionPointer
 	dynamic controlled executing_contract : StackLayer -> User
 	
-	/* GENERAL MONITORED FUNCTION */
-	monitored random_user : User
-	monitored random_function : Function
-	monitored random_amount : MoneyAmount
+    /* GENERAL MONITORED FUNCTION */
+    /* For symbolic execution, changed to: 'controlled ... : Integer -> ...', where the integer is the 'stage' of the run */
+    controlled random_user : Integer -> User
+    controlled random_function : Integer -> Function
+    controlled random_amount : Integer -> MoneyAmount
+
+    // 'stage' of the sequential run
+    controlled stage : Integer
 	
 	/* EXCEPTION HANDLING */
 	dynamic controlled global_state_layer : StackLayer
@@ -90,8 +94,10 @@ definitions:
 			if balance(sender(current_layer + 1), global_state_layer) >= amount(current_layer + 1) and amount(current_layer + 1) >= 0 then
 				let ($cl = current_layer) in
 					par
-						balance(sender($cl + 1), global_state_layer) := balance(sender($cl + 1), global_state_layer) - amount($cl + 1) // subtracts the amount from the sender user balance
-						balance(receiver($cl + 1), global_state_layer) := balance(receiver($cl + 1), global_state_layer) + amount($cl + 1) // adds the amount to the dest user balance
+                        seq             // use seq to avoid inconsistent updates when user is the same
+                            balance(sender($cl + 1), global_state_layer) := balance(sender($cl + 1), global_state_layer) - amount($cl + 1) // subtracts the amount from the sender user balance
+                            balance(receiver($cl + 1), global_state_layer) := balance(receiver($cl + 1), global_state_layer) + amount($cl + 1) // adds the amount to the dest user balance
+                        endseq
 						if is_contract(receiver($cl + 1)) then
 							par
 								current_layer := $cl + 1
@@ -103,11 +109,14 @@ definitions:
 						if is_contract(sender($cl + 1)) then 
 							instruction_pointer($cl) := instruction_pointer($cl) + 1
 						endif
+						call_response(current_layer + 1) := true
 					endpar
 				endlet
+			else 
+				r_Throw[]
 			endif
 			transaction := false
-			call_response(current_layer + 1) := true
+			
 		endpar
 		
 	macro rule r_Transaction($s in User, $r in User, $n in MoneyAmount, $f in Function) = 
@@ -155,41 +164,3 @@ definitions:
 			disabled(executing_contract(current_layer), global_state_layer) := true
 			instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
 		endpar
-
-		
-		
-		
-
-	
-		
-		
-		
-
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-
-		
-
-
-
