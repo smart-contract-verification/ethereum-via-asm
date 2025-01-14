@@ -84,6 +84,19 @@ definitions:
 	macro rule r_Save_Env ($n in StackLayer) =
 		forall $u in User with true do 
 			balance($u, $n) := balance($u, global_state_layer)
+			
+	/* 
+	 * RETURN RULE
+	 */
+	macro rule r_Ret =
+		current_layer := current_layer - 1
+	
+	macro rule r_Throw =
+		par
+			global_state_layer := global_state_layer - 1
+			call_response(current_layer) := false
+			r_Ret[]
+		endpar
 		
 		
 	/* 
@@ -132,18 +145,9 @@ definitions:
 		endpar
 		
 		
-	/* 
-	 * RETURN RULE
-	 */
-	macro rule r_Ret =
-		current_layer := current_layer - 1
+
 		
-	macro rule r_Throw =
-		par
-			global_state_layer := global_state_layer - 1
-			call_response(current_layer) := false
-			r_Ret[]
-		endpar
+
 		
 	/*
 	 * REQUIRE RULE

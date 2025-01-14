@@ -21,7 +21,8 @@ signature:
 	dynamic controlled value_withdraw : StackLayer -> MoneyAmount 
 	
 	
-	dynamic controlled old_balance : Integer
+	dynamic controlled old_balance : Prod(User, StackLayer) -> Integer
+	dynamic controlled old_balances : Prod(User, StackLayer) -> MoneyAmount
 	
 	/* METHODS DEFINITIONS AND USER DEFINITIONS */
 	static dao : User
@@ -114,13 +115,40 @@ definitions:
 	 */
 
 	// after a successful deposit(), the ETH balance of the contract is increased by msg.value.
-	invariant over balance : (executing_function(current_layer) = deposit and instruction_pointer(current_layer) = 1) implies (balance(dao, global_state_layer) = old_balance + amount(current_layer))
+	invariant over balance : (executing_function(current_layer) = deposit and instruction_pointer(current_layer) = 1) implies (balance(dao, global_state_layer) = old_balance(dao, current_layer) + amount(current_layer))
 	
 	// a deposit call does not revert if msg.value is less or equal to the ETH balance of msg.sender.
 	invariant over call_response : (executing_function(current_layer) = deposit and instruction_pointer(current_layer) = 1) implies (call_response(current_layer))
 	
 	// a deposit call reverts if msg.value is greater than the ETH balance of msg.sender
 	invariant over call_response : (executing_function(current_layer) = deposit) implies (call_response(current_layer))
+	
+	// after a successful deposit(), the balance entry of msg.sender is increased by msg.value
+	invariant over balances : (executing_function(current_layer) = deposit and instruction_pointer(current_layer) = 1) implies (balances(sender(current_layer), global_state_layer) = amount(current_layer) + old_balances(sender(current_layer), current_layer))
+	
+	// the only way to decrease the balance entry of a user a is by calling withdraw with msg.sender = a
+	invariant over balances : (exist $u in User with balances($u, global_state_layer) < old_balances($u, current_layer + 1)) implies executing_function(current_layer + 1) = withdraw
+	
+	// the only way to increase the balance entry of a user a is by calling deposit with msg.sender = a
+	invariant over balances : (exist $u in User with balances($u, global_state_layer) > old_balances($u, current_layer + 1)) implies executing_function(current_layer + 1) = deposit
+	
+	// after a successful withdraw(amount), the ETH balance the contract is decreased by amount
+	invariant over balance : (executing_function(current_layer) = withdraw and instruction_pointer(current_layer) = 6) implies (balance(dao, global_state_layer) = old_balance(dao, current_layer) - amount(current_layer))
+	
+	// a withdraw(amount) call does not revert if amount is bigger than zero and less or equal to the balance entry of msg.sender
+	invariant over call_response : (executing_function(current_layer) = withdraw and instruction_pointer(current_layer) = 6) implies (call_response(current_layer))
+	
+	// a withdraw(amount) call reverts if amount is zero or greater than the balance entry of msg.sender.
+	invariant over balances : (executing_function(current_layer + 1) = withdraw and (exist $u in User with old_balances($u, current_layer + 1) < value_withdraw(current_layer + 1))) implies not call_response(current_layer + 1)
+	
+	// after a successful withdraw(amount), the ETH balance of the transaction sender is increased by amount ETH.
+	invariant over balance : (executing_function(current_layer + 1) = withdraw and call_response(current_layer + 1)) implies balance(sender(current_layer + 1), global_state_layer) = old_balance(sender(current_layer + 1), current_layer + 1) + value_withdraw(current_layer + 1)
+	
+	// after a successful withdraw(amount) originated by an EOA, the ETH balance of the transaction sender is increased by amount ETH.
+	// --
+	
+	// after a successful withdraw(amount), the balance entry of msg.sender is decreased by amount
+	invariant over balances : (executing_function(current_layer + 1) = withdraw and call_response(current_layer + 1)) implies balances(sender(current_layer + 1), global_state_layer) = old_balances(sender(current_layer + 1), current_layer + 1) - value_withdraw(current_layer + 1)
 	
 	
 	/*
@@ -131,7 +159,11 @@ definitions:
 			par
 				r_Save[global_state_layer]
 				r_Transaction_Env[]
-				old_balance := balance(receiver(current_layer + 1), global_state_layer)
+				// funzioni per fare verifica
+				forall $u1 in User with true do 
+					old_balance($u1, current_layer + 1) := balance(receiver(current_layer + 1), global_state_layer)
+				forall $u in User with true do 
+					old_balances($u, current_layer) := balances($u, global_state_layer)
 			endpar
 		else
 			if current_layer = 0 then
