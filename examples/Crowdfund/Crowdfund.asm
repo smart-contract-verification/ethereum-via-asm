@@ -14,7 +14,7 @@ signature:
 	dynamic controlled local_amount : StackLayer -> Integer
 	
 	
-	dynamic controlled block_number : Integer -> Integer
+	dynamic controlled block_number : Integer
 	
 	dynamic controlled old_balance : Prod(User, StackLayer) -> Integer
 	
@@ -40,11 +40,12 @@ definitions:
 			endpar
 
 	
+
 	rule r_Donate = 
 		if executing_function(current_layer) = donate then
 			switch instruction_pointer(current_layer)
 				case 0 : 
-					r_Require[block_number(stage) <= end_donate(global_state_layer)]
+					r_Require[block_number <= end_donate(global_state_layer)]
 				case 1 :
 					par
 						donors(global_state_layer, sender(current_layer)) := amount(current_layer)
@@ -56,11 +57,12 @@ definitions:
 		endif
 		
 		
+		
 	rule r_Withdraw = 
 		if executing_function(current_layer) = withdraw then
 			switch instruction_pointer(current_layer)
 				case 0 :
-					r_Require[block_number(stage) >= end_donate(global_state_layer)]
+					r_Require[block_number >= end_donate(global_state_layer)]
 				case 1 : 
 					r_Require[balance(crowdfund, global_state_layer) >= goal(global_state_layer)]
 				case 2 : 
@@ -78,7 +80,7 @@ definitions:
 		if executing_function(current_layer) = reclaim then
 			switch instruction_pointer(current_layer)
 				case 0 :
-					r_Require[block_number(stage) >= end_donate(global_state_layer)]
+					r_Require[block_number >= end_donate(global_state_layer)]
 				case 1 : 
 					r_Require[balance(crowdfund, global_state_layer) < goal(global_state_layer)]
 				case 2 : 
@@ -102,6 +104,8 @@ definitions:
 			endswitch
 		endif
 	
+	
+	
 	rule r_Fallback =
 		if executing_function(current_layer) != reclaim and  executing_function(current_layer) != withdraw and  executing_function(current_layer) != donate then 
 			switch instruction_pointer(current_layer)
@@ -116,33 +120,43 @@ definitions:
 	 */
 	 
 	// after the donation phase, if the contract balance decreases then either a successful withdraw or reclaim have been performed.
+	invariant over executing_function : (block_number >= end_donate(global_state_layer) and old_balance(crowdfund, current_layer + 1) > balance(crowdfund, global_state_layer)) implies (executing_function(current_layer + 1) = withdraw or executing_function(current_layer + 1) = withdraw)
 	
 	
 	// a transaction donate is not reverted if the donation phase has not ended.
+	invariant over call_response : (block_number < end_donate(global_state_layer) and executing_function(current_layer + 1) = donate) implies (call_response(current_layer + 1))
 	
 	
 	// a transaction donate is not reverted if the donation phase has not ended and sum between the old and the current donation does not overflow.
+	invariant over call_response : (block_number < end_donate(global_state_layer) and (old_balance(crowdfund, current_layer + 1) + amount(current_layer + 1) <= goal(global_state_layer)) and executing_function(current_layer + 1) = donate) implies (call_response(current_layer + 1))
 	
 	
 	// calls to donate will revert if the donation phase has ended.
+	invariant over call_response : (block_number > end_donate(global_state_layer) and executing_function(current_layer + 1) = donate) implies (not call_response(current_layer + 1))
 	
 	
 	// the contract balance does not increase after the end of the donation phase.
+	invariant over balance : (block_number > end_donate(global_state_layer)) implies (old_balance(crowdfund, current_layer) >= balance(crowdfund, global_state_layer))
 	
 	
 	// calls to withdraw will revert if the contract balance is less than the goal
+	invariant over call_response : (executing_function(current_layer + 1) = withdraw and old_balance(crowdfund, current_layer + 1) < goal(global_state_layer)) implies (not call_response(current_layer + 1))
 	
 	
 	// only the owner can receive ETH from the contract.
+	invariant over receiver : (transaction and sender(current_layer) = crowdfund) implies (receiver(current_layer) = owner(global_state_layer))
 	
 	
 	// a transaction reclaim is not reverted if the goal amount is not reached and the deposit phase has ended, and the sender has donated funds that they have not reclaimed yet
+	// --
 	
 	
 	// a transaction withdraw is not reverted if the contract balance is greater than or equal to the goal and the donation phase has ended.
+	invariant over call_response : (executing_function(current_layer + 1) = withdraw and old_balance(crowdfund, current_layer + 1) >= goal(global_state_layer) and block_number > end_donate(global_state_layer)) implies (call_response(current_layer + 1))
 	
 	
 	// a transaction withdraw is not reverted if the contract balance is greater than or equal to the goal, the donation phase has ended, and the receiver is an EOA.
+	invariant over call_response : (executing_function(current_layer + 1) = withdraw and old_balance(crowdfund, current_layer + 1) >= goal(global_state_layer) and block_number > end_donate(global_state_layer) and not is_contract(sender(current_layer + 1))) implies (call_response(current_layer + 1))
 	
 	
 	
@@ -164,6 +178,7 @@ definitions:
 						r_Save[0]
 						r_Save_Env[0]
 						global_state_layer := 0
+						block_number := block_number + 1
 					endpar
 				endif
 			else
@@ -193,6 +208,7 @@ definitions:
 default init s0:
 
 	function stage = 0
+	function block_number = 0
 
 	/*
 	 * LIBRARY FUNCTION INITIZLIZATIONS
