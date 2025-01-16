@@ -101,7 +101,34 @@ definitions:
 	 * INVARIANT
 	 */
 	 
-	 
+	// after the donation phase, if the contract balance decreases then either a successful withdraw or reclaim have been performed.
+	
+	
+	// a transaction donate is not reverted if the donation phase has not ended.
+	
+	
+	// a transaction donate is not reverted if the donation phase has not ended and sum between the old and the current donation does not overflow.
+	
+	
+	// calls to donate will revert if the donation phase has ended.
+	
+	
+	// the contract balance does not increase after the end of the donation phase.
+	
+	
+	// calls to withdraw will revert if the contract balance is less than the goal
+	
+	
+	// only the owner can receive ETH from the contract.
+	
+	
+	// a transaction reclaim is not reverted if the goal amount is not reached and the deposit phase has ended, and the sender has donated funds that they have not reclaimed yet
+	
+	
+	// a transaction withdraw is not reverted if the contract balance is greater than or equal to the goal and the donation phase has ended.
+	
+	
+	// a transaction withdraw is not reverted if the contract balance is greater than or equal to the goal, the donation phase has ended, and the receiver is an EOA.
 	
 	
 	
