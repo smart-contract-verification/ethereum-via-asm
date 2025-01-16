@@ -27,9 +27,6 @@ signature:
 	/* METHODS DEFINITIONS AND USER DEFINITIONS */
 	static dao : User
 	
-	static undef_user : User
-	static undef_function : Function
-	
 	static deposit : Function
 	static withdraw : Function 
 
@@ -86,7 +83,7 @@ definitions:
 				case 4 :
 					r_Transaction[dao, sender(current_layer), value_withdraw(current_layer), none]
 				case 5 :
-					r_Require[call_response(current_layer)]
+					r_Require[call_response(current_layer + 1)]
 				case 6 :
 					r_Ret[]
 			endswitch
@@ -155,40 +152,43 @@ definitions:
 	 * MAIN 
 	 */ 
 	main rule r_Main = 	
-		if transaction then 
-			par
-				r_Save[global_state_layer]
-				r_Transaction_Env[]
-				// funzioni per fare verifica
-				forall $u1 in User with true do 
-					old_balance($u1, current_layer + 1) := balance(receiver(current_layer + 1), global_state_layer)
-				forall $u in User with true do 
-					old_balances($u, current_layer) := balances($u, global_state_layer)
-			endpar
-		else
-			if current_layer = 0 then
-				if global_state_layer = 0 then
-					r_Transaction[user, random_user(stage), random_amount(stage), random_function(stage)]
-				else 
-					par
-						r_Save[0]
-						r_Save_Env[0]
-						global_state_layer := 0
-					endpar
-				endif
+		par
+			if transaction then 
+				par
+					r_Save[global_state_layer]
+					r_Transaction_Env[]
+					// funzioni per fare verifica
+					forall $u1 in User with true do 
+						old_balance($u1, current_layer + 1) := balance(receiver(current_layer + 1), global_state_layer)
+					forall $u in User with true do 
+						old_balances($u, current_layer) := balances($u, global_state_layer)
+				endpar
 			else
-				switch executing_contract(current_layer) 
-					case dao : 
-						par 
-							r_Deposit[]
-							r_Withdraw[]
-							r_Fallback[]
+				if current_layer = 0 then
+					if global_state_layer = 0 then
+						r_Transaction[user, random_user(stage), random_amount(stage), random_function(stage)]
+					else 
+						par
+							r_Save[0]
+							r_Save_Env[0]
+							global_state_layer := 0
 						endpar
-					otherwise 
-						r_Ret[]
-				endswitch
+					endif
+				else
+					switch executing_contract(current_layer) 
+						case dao : 
+							par 
+								r_Deposit[]
+								r_Withdraw[]
+								r_Fallback[]
+							endpar
+						otherwise 
+							r_Ret[]
+					endswitch
+				endif
 			endif
-		endif
+			stage := stage + 1
+		endpar
 			
 
 

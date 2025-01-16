@@ -57,6 +57,9 @@ signature:
 	
 	static user : User
 	
+	static undef_user : User
+	static undef_function : Function
+	
 
 	
 
