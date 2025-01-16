@@ -16,6 +16,8 @@ signature:
 	
 	dynamic controlled block_number : Integer -> Integer
 	
+	dynamic controlled old_balance : Prod(User, StackLayer) -> Integer
+	
 	
 	static crowdfund : User
 	
@@ -26,6 +28,16 @@ signature:
 
 
 definitions:
+
+
+	rule r_Save ($n in StackLayer) =
+		forall $u in User with true do 
+			par
+				end_donate($n) := end_donate(global_state_layer)
+				goal($n) := goal(global_state_layer)
+				owner($n) := owner(global_state_layer)
+				donors($n, $u) := donors(global_state_layer, $u)
+			endpar
 
 	
 	rule r_Donate = 
@@ -43,21 +55,23 @@ definitions:
 			endswitch
 		endif
 		
+		
 	rule r_Withdraw = 
 		if executing_function(current_layer) = withdraw then
 			switch instruction_pointer(current_layer)
 				case 0 :
 					r_Require[block_number(stage) >= end_donate(global_state_layer)]
 				case 1 : 
-					r_Require[balance(crowdfund, global_state_layer) >= goal]
+					r_Require[balance(crowdfund, global_state_layer) >= goal(global_state_layer)]
 				case 2 : 
-					r_Transaction[crowdfund, owner, balance(crowdfund, global_state_layer), none]
+					r_Transaction[crowdfund, owner(global_state_layer), balance(crowdfund, global_state_layer), none]
 				case 3 : 
 					r_Require[call_response(current_layer + 1)]
 				case 4 :
 					r_Ret[]
 			endswitch
 		endif
+		
 	
 	
 	rule r_Reclaim = 
@@ -66,7 +80,7 @@ definitions:
 				case 0 :
 					r_Require[block_number(stage) >= end_donate(global_state_layer)]
 				case 1 : 
-					r_Require[balance(crowdfund, global_state_layer) < goal]
+					r_Require[balance(crowdfund, global_state_layer) < goal(global_state_layer)]
 				case 2 : 
 					r_Require[donors(global_state_layer, sender(current_layer)) > 0]
 				case 3 : 
@@ -138,6 +152,8 @@ definitions:
 			par
 				r_Save[global_state_layer]
 				r_Transaction_Env[]
+				forall $u in User with true do 
+					old_balance($u, current_layer + 1) := balance(receiver(current_layer + 1), global_state_layer)
 			endpar
 		else
 			if current_layer = 0 then
