@@ -3,6 +3,8 @@ asm Crowdfund
 
 import ../../lib/asmeta/StandardLibrary
 import ../../lib/solidity/EVMlibrary
+//import ../../lib/attackers/SimpleReentrancyAttack
+import ../../lib/attackers/SimpleKingOfEtherThroneAttack
 
 signature:
 
@@ -166,6 +168,7 @@ definitions:
 			par
 				r_Save[global_state_layer]
 				r_Transaction_Env[]
+				r_Save_Att[global_state_layer]
 				forall $u in User with true do 
 					old_balance($u, current_layer + 1) := balance(receiver(current_layer + 1), global_state_layer)
 			endpar
@@ -190,6 +193,8 @@ definitions:
 							r_Reclaim[]
 							r_Fallback[]
 						endpar
+					case attacker : 
+						r_Attacker[]
 					otherwise 
 						r_Throw[]
 				endswitch
@@ -213,13 +218,19 @@ default init s0:
 	/*
 	 * LIBRARY FUNCTION INITIZLIZATIONS
 	 */
-	function executing_function ($sl in StackLayer) = if $sl = 0 then none else undef_function endif 
-	function executing_contract ($cl in StackLayer) = if $cl = 0 then user else undef_user endif
+	function executing_function ($sl in StackLayer) =  none
+	function executing_contract ($cl in StackLayer) = user
 	function instruction_pointer ($sl in StackLayer) = if $sl = 0 then 0 else -999999 endif
 	function current_layer = 0
 	function transaction = false
 	function balance($c in User, $n in StackLayer) = if $n = 0 then 10 else -999999 endif
 	function global_state_layer = 0
+	function payable ($f in Function) =
+		switch $f
+			case donate : true
+			case none : true
+			otherwise false
+		endswitch
 	
 
 	function owner ($sl in StackLayer) = user
@@ -228,4 +239,7 @@ default init s0:
 	
 	function donors ($sl in StackLayer, $u in User) = -999999
 	function local_amount ($sl in StackLayer) = -999999
+	
+
+	function input_user ($sl in StackLayer) = user
 

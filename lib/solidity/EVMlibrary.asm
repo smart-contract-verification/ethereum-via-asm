@@ -17,7 +17,7 @@ signature:
 	
 	/* USER ATTRIBUTES */
 	dynamic controlled balance : Prod(User, StackLayer) -> MoneyAmount 
-	dynamic controlled disabled : Prod(User, StackLayer) -> Boolean
+	dynamic controlled destroyed : Prod(User, StackLayer) -> Boolean
 	static is_contract : User -> Boolean
 
 	
@@ -35,6 +35,7 @@ signature:
 	dynamic controlled executing_function : StackLayer -> Function
 	dynamic controlled instruction_pointer : StackLayer -> InstructionPointer
 	dynamic controlled executing_contract : StackLayer -> User
+	dynamic controlled payable : Function -> Boolean
 	
     /* GENERAL MONITORED FUNCTION */
     /* For symbolic execution, changed to: 'controlled ... : Integer -> ...', where the integer is the 'stage' of the run */
@@ -51,14 +52,12 @@ signature:
 	
 	
 	
+	
 	/* ABSTRACT DOMAIN DEFINITION FOR EVM */
 	static fallback : Function
 	static none : Function
 	
 	static user : User
-	
-	static undef_user : User
-	static undef_function : Function
 	
 
 	
@@ -107,25 +106,26 @@ definitions:
 	 */
 	macro rule r_Transaction_Env =
 		par
-			if balance(sender(current_layer + 1), global_state_layer) >= amount(current_layer + 1) and amount(current_layer + 1) >= 0 then
+			if balance(sender(current_layer), global_state_layer) >= amount(current_layer) and amount(current_layer) >= 0 then
 				let ($cl = current_layer) in
 					par
                         seq             // use seq to avoid inconsistent updates when user is the same
-                            balance(sender($cl + 1), global_state_layer) := balance(sender($cl + 1), global_state_layer) - amount($cl + 1) // subtracts the amount from the sender user balance
-                            balance(receiver($cl + 1), global_state_layer) := balance(receiver($cl + 1), global_state_layer) + amount($cl + 1) // adds the amount to the dest user balance
+                            balance(sender($cl), global_state_layer) := balance(sender($cl), global_state_layer) - amount($cl) // subtracts the amount from the sender user balance
+                            balance(receiver($cl), global_state_layer) := balance(receiver($cl), global_state_layer) + amount($cl) // adds the amount to the dest user balance
                         endseq
-						if is_contract(receiver($cl + 1)) then
+						if is_contract(receiver($cl)) then
 							par
-								current_layer := $cl + 1
-								executing_contract($cl + 1) := receiver($cl + 1)
-								executing_function($cl + 1) := function_call($cl + 1)
-								instruction_pointer($cl + 1) := 0
+								if amount($cl) > 0 and not payable(function_call($cl)) then
+									r_Throw[]
+								endif
+								executing_contract($cl) := receiver($cl)
+								executing_function($cl) := function_call($cl)
+								instruction_pointer($cl) := 0
 							endpar
 						endif
-						if is_contract(sender($cl + 1)) then 
-							instruction_pointer($cl) := instruction_pointer($cl) + 1
+						if is_contract(sender($cl)) then 
+							instruction_pointer($cl - 1) := instruction_pointer($cl - 1) + 1
 						endif
-						call_response(current_layer + 1) := true
 					endpar
 				endlet
 			else 
@@ -142,6 +142,8 @@ definitions:
 			receiver(current_layer + 1) := $r 
 			amount(current_layer + 1) := $n
 			function_call(current_layer + 1) := $f
+			call_response(current_layer + 1) := true
+			current_layer := current_layer + 1
 			
 			r_Save_Env[global_state_layer + 1]
 			global_state_layer := global_state_layer + 1
@@ -164,10 +166,12 @@ definitions:
 			endif
 		endlet
 		
-	macro rule r_Autodestroy ($u in User) = 
-		par
-			balance($u, global_state_layer) := balance($u, global_state_layer) + balance(executing_contract(current_layer), global_state_layer)
-			balance(executing_contract(current_layer), global_state_layer) := 0
-			disabled(executing_contract(current_layer), global_state_layer) := true
-			instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
-		endpar
+	macro rule r_Selfdestruct ($u in User) = 
+		if is_contract($u) then
+			par
+				balance($u, global_state_layer) := balance($u, global_state_layer) + balance(executing_contract(current_layer), global_state_layer)
+				balance(executing_contract(current_layer), global_state_layer) := 0
+				destroyed(executing_contract(current_layer), global_state_layer) := true
+				r_Ret[]
+			endpar
+		endif

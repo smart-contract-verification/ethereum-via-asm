@@ -9,10 +9,13 @@ export *
 
 
 signature:
+
+	controlled input_user : Integer ->  User
 	
 	static attacker : User
 	
 	static attack : Function
+	static destroy : Function
 
 
 definitions:
@@ -20,9 +23,23 @@ definitions:
 
 	rule r_Save_Att ($n in StackLayer) = 
 		skip
+		
+		
+	rule r_Destroy =
+		if executing_function(current_layer) = destroy then
+			switch instruction_pointer(current_layer)
+				case 0 : 
+					par
+						input_user(current_layer) := random_user(stage)
+						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+					endpar
+				case 1 : 
+					r_Selfdestruct[input_user(current_layer)]
+			endswitch
+		endif
 	
 
-	rule r_Attack =
+	rule r_Call =
 		let ($cl = current_layer) in
 			let ($scl = sender($cl)) in
 				if executing_function($cl) = attack then
@@ -57,7 +74,8 @@ definitions:
 	
 	rule r_Attacker =  
 		par
-			r_Attack[]
+			r_Destroy[]
+			r_Call[]
 			r_Fallback_attacker[]
 		endpar
 
