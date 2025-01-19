@@ -49,12 +49,12 @@ signature:
 	/* EXCEPTION HANDLING */
 	dynamic controlled global_state_layer : StackLayer
 	dynamic controlled call_response : StackLayer -> Boolean
+	dynamic controlled exception_code : StackLayer -> Integer
 	
 	
 	
 	
 	/* ABSTRACT DOMAIN DEFINITION FOR EVM */
-	static fallback : Function
 	static none : Function
 	
 	static user : User
@@ -93,10 +93,11 @@ definitions:
 	macro rule r_Ret =
 		current_layer := current_layer - 1
 	
-	macro rule r_Throw =
+	macro rule r_Throw ($n in Integer) =
 		par
 			global_state_layer := global_state_layer - 1
 			call_response(current_layer) := false
+			exception_code(current_layer) := $n
 			r_Ret[]
 		endpar
 		
@@ -116,7 +117,7 @@ definitions:
 						if is_contract(receiver($cl)) then
 							par
 								if amount($cl) > 0 and not payable(function_call($cl)) then
-									r_Throw[]
+									r_Throw[-1]
 								endif
 								executing_contract($cl) := receiver($cl)
 								executing_function($cl) := function_call($cl)
@@ -129,10 +130,9 @@ definitions:
 					endpar
 				endlet
 			else 
-				r_Throw[]
+				r_Throw[-1]
 			endif
 			transaction := false
-			
 		endpar
 		
 	macro rule r_Transaction($s in User, $r in User, $n in MoneyAmount, $f in Function) = 
@@ -143,6 +143,7 @@ definitions:
 			amount(current_layer + 1) := $n
 			function_call(current_layer + 1) := $f
 			call_response(current_layer + 1) := true
+			exception_code(current_layer + 1) := 0
 			current_layer := current_layer + 1
 			
 			r_Save_Env[global_state_layer + 1]
@@ -162,7 +163,7 @@ definitions:
 			if $b then
 				instruction_pointer($cl) := instruction_pointer($cl) + 1
 			else 
-				r_Throw[]
+				r_Throw[1]
 			endif
 		endlet
 		

@@ -4,7 +4,7 @@ asm Crowdfund
 import ../../lib/asmeta/StandardLibrary
 import ../../lib/solidity/EVMlibrary
 //import ../../lib/attackers/SimpleReentrancyAttack
-import ../../lib/attackers/SimpleKingOfEtherThroneAttack
+//import ../../lib/attackers/SimpleKingOfEtherThroneAttack
 
 signature:
 
@@ -126,15 +126,15 @@ definitions:
 	
 	
 	// a transaction donate is not reverted if the donation phase has not ended.
-	invariant over call_response : (block_number < end_donate(global_state_layer) and executing_function(current_layer + 1) = donate and executing_contract(current_layer + 1) = crowdfund) implies (call_response(current_layer + 1))
+	invariant over call_response : (block_number < end_donate(global_state_layer) and executing_function(current_layer + 1) = donate and executing_contract(current_layer + 1) = crowdfund) implies (call_response(current_layer + 1) or exception_code(current_layer + 1) < 0)
 	
 	
 	// a transaction donate is not reverted if the donation phase has not ended and sum between the old and the current donation does not overflow.
-	invariant over call_response : (block_number < end_donate(global_state_layer) and (old_balance(crowdfund, current_layer + 1) + amount(current_layer + 1) <= goal(global_state_layer)) and executing_function(current_layer + 1) = donate and executing_contract(current_layer + 1) = crowdfund) implies (call_response(current_layer + 1))
+	invariant over call_response : (block_number < end_donate(global_state_layer) and (old_balance(crowdfund, current_layer + 1) + amount(current_layer + 1) <= goal(global_state_layer)) and executing_function(current_layer + 1) = donate and executing_contract(current_layer + 1) = crowdfund) implies (call_response(current_layer + 1) or exception_code(current_layer + 1) < 0)
 	
 	
 	// calls to donate will revert if the donation phase has ended.
-	invariant over call_response : (block_number > end_donate(global_state_layer) and executing_function(current_layer + 1) = donate) implies (not call_response(current_layer + 1))
+	invariant over call_response : (block_number > end_donate(global_state_layer) and executing_function(current_layer + 1) = donate and executing_contract(current_layer + 1) = crowdfund) implies (not call_response(current_layer + 1) and exception_code(current_layer + 1) > 0)
 	
 	
 	// the contract balance does not increase after the end of the donation phase.
@@ -142,7 +142,7 @@ definitions:
 	
 	
 	// calls to withdraw will revert if the contract balance is less than the goal
-	invariant over call_response : (executing_function(current_layer + 1) = withdraw and old_balance(crowdfund, current_layer + 1) < goal(global_state_layer)) implies (not call_response(current_layer + 1))
+	invariant over call_response : (executing_function(current_layer + 1) = withdraw and executing_contract(current_layer + 1) = crowdfund and old_balance(crowdfund, current_layer + 1) < goal(global_state_layer)) implies (not call_response(current_layer + 1) and exception_code(current_layer + 1) > 0)
 	
 	
 	// only the owner can receive ETH from the contract.
@@ -150,15 +150,15 @@ definitions:
 	
 	
 	// a transaction reclaim is not reverted if the goal amount is not reached and the deposit phase has ended, and the sender has donated funds that they have not reclaimed yet
-	// --
+	invariant over call_response : (executing_function(current_layer + 1) = reclaim and executing_contract(current_layer + 1) = crowdfund and (old_balance(crowdfund, current_layer + 1) + amount(current_layer + 1) <= goal(global_state_layer)) and block_number > end_donate(global_state_layer) and donors(global_state_layer, sender(current_layer + 1)) > 0) implies (call_response(current_layer + 1) or exception_code(current_layer + 1) < 0)
 	
 	
 	// a transaction withdraw is not reverted if the contract balance is greater than or equal to the goal and the donation phase has ended.
-	invariant over call_response : (executing_function(current_layer + 1) = withdraw and old_balance(crowdfund, current_layer + 1) >= goal(global_state_layer) and block_number > end_donate(global_state_layer)) implies (call_response(current_layer + 1))
+	invariant over call_response : (executing_function(current_layer + 1) = withdraw and executing_contract(current_layer + 1) = crowdfund and old_balance(crowdfund, current_layer + 1) >= goal(global_state_layer) and block_number > end_donate(global_state_layer)) implies (call_response(current_layer + 1) or exception_code(current_layer + 1) < 0)
 	
 	
 	// a transaction withdraw is not reverted if the contract balance is greater than or equal to the goal, the donation phase has ended, and the receiver is an EOA.
-	invariant over call_response : (executing_function(current_layer + 1) = withdraw and old_balance(crowdfund, current_layer + 1) >= goal(global_state_layer) and block_number > end_donate(global_state_layer) and not is_contract(sender(current_layer + 1))) implies (call_response(current_layer + 1))
+	invariant over call_response : (executing_function(current_layer + 1) = withdraw and executing_contract(current_layer + 1) = crowdfund and old_balance(crowdfund, current_layer + 1) >= goal(global_state_layer) and block_number > end_donate(global_state_layer) and not is_contract(sender(current_layer + 1))) implies (call_response(current_layer + 1) or exception_code(current_layer + 1) < 0)
 	
 	
 	
@@ -168,7 +168,7 @@ definitions:
 			par
 				r_Save[global_state_layer]
 				r_Transaction_Env[]
-				r_Save_Att[global_state_layer]
+				//r_Save_Att[global_state_layer]
 				forall $u in User with true do 
 					old_balance($u, current_layer + 1) := balance(receiver(current_layer + 1), global_state_layer)
 			endpar
@@ -193,10 +193,10 @@ definitions:
 							r_Reclaim[]
 							r_Fallback[]
 						endpar
-					case attacker :
-						r_Attacker[]
+//					case attacker :
+//						r_Attacker[]
 					otherwise 
-						r_Throw[]
+						r_Throw[-2]
 				endswitch
 			endif
 		endif
@@ -220,10 +220,10 @@ default init s0:
 	 */
 	function executing_function ($sl in StackLayer) =  none
 	function executing_contract ($cl in StackLayer) = user
-	function instruction_pointer ($sl in StackLayer) = if $sl = 0 then 0 else -999999 endif
+	function instruction_pointer ($sl in StackLayer) = 0
 	function current_layer = 0
 	function transaction = false
-	function balance($c in User, $n in StackLayer) = if $n = 0 then 10 else -999999 endif
+	function balance($c in User, $n in StackLayer) = if $n = 0 then 10 else 0 endif
 	function global_state_layer = 0
 	function payable ($f in Function) =
 		switch $f
@@ -231,6 +231,7 @@ default init s0:
 			case none : true
 			otherwise false
 		endswitch
+	function exception_code($cl in StackLayer) = 0
 	
 
 	function owner ($sl in StackLayer) = user
@@ -239,6 +240,26 @@ default init s0:
 	
 	function donors ($sl in StackLayer, $u in User) = -999999
 	function local_amount ($sl in StackLayer) = -999999
+	
+	
+//	function random_function($x in Integer) =
+//        switch $x
+//            case 0 : donate
+//            otherwise none
+//        endswitch
+//        
+//    function random_user($x in Integer) =
+//        switch $x
+//            case 0 : crowdfund
+//            otherwise user
+//        endswitch
+//        
+//     function random_amount($x in Integer) =
+//        switch $x
+//            case 0 : 5
+//            case 6 : -1
+//            otherwise 0
+//        endswitch
 	
 
 // function input_user ($sl in StackLayer) = user

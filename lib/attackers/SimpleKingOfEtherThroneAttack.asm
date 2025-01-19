@@ -63,9 +63,7 @@ definitions:
 			if executing_function($cl) != attack then
 				switch instruction_pointer($cl)
 					case 0 : 
-						r_Throw[]
-					case 1 :
-						r_Ret[]
+						r_Throw[2]
 				endswitch
 			endif
 		endlet
