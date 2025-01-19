@@ -10,12 +10,12 @@ export *
 
 signature:
 
-	controlled input_user : Integer ->  User
+//	controlled input_user : Integer ->  User
 	
 	static attacker : User
 	
 	static attack : Function
-	static destroy : Function
+	//static destroy : Function
 
 
 definitions:
@@ -25,18 +25,18 @@ definitions:
 		skip
 		
 		
-	rule r_Destroy =
-		if executing_function(current_layer) = destroy then
-			switch instruction_pointer(current_layer)
-				case 0 : 
-					par
-						input_user(current_layer) := random_user(stage)
-						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
-					endpar
-				case 1 : 
-					r_Selfdestruct[input_user(current_layer)]
-			endswitch
-		endif
+//	rule r_Destroy =
+//		if executing_function(current_layer) = destroy then
+//			switch instruction_pointer(current_layer)
+//				case 0 : 
+//					par
+//						input_user(current_layer) := random_user(stage)
+//						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+//					endpar
+//				case 1 : 
+//					r_Selfdestruct[input_user(current_layer)]
+//			endswitch
+//		endif
 	
 
 	rule r_Call =
@@ -74,7 +74,7 @@ definitions:
 	
 	rule r_Attacker =  
 		par
-			r_Destroy[]
+//			r_Destroy[]
 			r_Call[]
 			r_Fallback_attacker[]
 		endpar

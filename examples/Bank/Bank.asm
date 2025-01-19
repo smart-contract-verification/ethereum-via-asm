@@ -203,8 +203,8 @@ default init s0:
 	/*
 	 * LIBRARY FUNCTION INITIZLIZATIONS
 	 */
-	function executing_function ($sl in StackLayer) = if $sl = 0 then none else undef_function endif 
-	function executing_contract ($cl in StackLayer) = if $cl = 0 then user else undef_user endif
+	function executing_function ($sl in StackLayer) = none
+	function executing_contract ($cl in StackLayer) = user
 	function instruction_pointer ($sl in StackLayer) = if $sl = 0 then 0 else -999999 endif
 	function current_layer = 0
 	function transaction = false

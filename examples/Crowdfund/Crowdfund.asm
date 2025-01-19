@@ -122,15 +122,15 @@ definitions:
 	 */
 	 
 	// after the donation phase, if the contract balance decreases then either a successful withdraw or reclaim have been performed.
-	invariant over executing_function : (block_number >= end_donate(global_state_layer) and old_balance(crowdfund, current_layer + 1) > balance(crowdfund, global_state_layer)) implies (executing_function(current_layer + 1) = withdraw or executing_function(current_layer + 1) = withdraw)
+	invariant over executing_function : (block_number >= end_donate(global_state_layer) and old_balance(crowdfund, current_layer + 1) > balance(crowdfund, global_state_layer)) implies (executing_function(current_layer + 1) = withdraw or executing_function(current_layer + 1) = reclaim)
 	
 	
 	// a transaction donate is not reverted if the donation phase has not ended.
-	invariant over call_response : (block_number < end_donate(global_state_layer) and executing_function(current_layer + 1) = donate) implies (call_response(current_layer + 1))
+	invariant over call_response : (block_number < end_donate(global_state_layer) and executing_function(current_layer + 1) = donate and executing_contract(current_layer + 1) = crowdfund) implies (call_response(current_layer + 1))
 	
 	
 	// a transaction donate is not reverted if the donation phase has not ended and sum between the old and the current donation does not overflow.
-	invariant over call_response : (block_number < end_donate(global_state_layer) and (old_balance(crowdfund, current_layer + 1) + amount(current_layer + 1) <= goal(global_state_layer)) and executing_function(current_layer + 1) = donate) implies (call_response(current_layer + 1))
+	invariant over call_response : (block_number < end_donate(global_state_layer) and (old_balance(crowdfund, current_layer + 1) + amount(current_layer + 1) <= goal(global_state_layer)) and executing_function(current_layer + 1) = donate and executing_contract(current_layer + 1) = crowdfund) implies (call_response(current_layer + 1))
 	
 	
 	// calls to donate will revert if the donation phase has ended.
@@ -193,7 +193,7 @@ definitions:
 							r_Reclaim[]
 							r_Fallback[]
 						endpar
-					case attacker : 
+					case attacker :
 						r_Attacker[]
 					otherwise 
 						r_Throw[]
@@ -241,5 +241,5 @@ default init s0:
 	function local_amount ($sl in StackLayer) = -999999
 	
 
-	function input_user ($sl in StackLayer) = user
+// function input_user ($sl in StackLayer) = user
 
