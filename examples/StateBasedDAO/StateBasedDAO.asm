@@ -44,7 +44,7 @@ definitions:
 						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
 					endpar
 				case 2 : 
-					r_Require[balance(executing_contract(current_layer)) < 20]
+					r_Require[balance(executing_contract(current_layer)) < 4]
 				case 3 : 
 					par
 						customer_balance(sender(current_layer)) := customer_balance(sender(current_layer)) + amount(current_layer)
@@ -158,7 +158,7 @@ default init s0:
 	function executing_contract ($cl in StackLayer) = user
 	function instruction_pointer ($sl in StackLayer) = 0
 	function current_layer = 0
-	function balance($c in User) = 10
+	function balance($c in User) = 2
 	function destroyed($u in User) = false
 	function payable($f in Function) = 
 		switch $f

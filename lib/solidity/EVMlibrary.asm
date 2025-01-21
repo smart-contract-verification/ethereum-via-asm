@@ -63,7 +63,7 @@ signature:
 definitions:
 	
 	/* DOMAIN AND FUNCTION DEFINITION */
-	domain MoneyAmount = {-3 : 30}
+	domain MoneyAmount = {-3 : 5}
 	domain StackLayer = {0 : 2}
 	domain InstructionPointer = {0 : 7}
 	domain GeneralInteger = {0 : 4}
