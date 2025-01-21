@@ -131,7 +131,7 @@ definitions:
 	 * MAIN 
 	 */ 
 	main rule r_Main = 	
-		if not is_contract(executing_contract(current_layer)) then
+		if current_layer = 0 then
 			r_Transaction[user, random_user, random_amount, random_function]
 		else
 			if executing_contract(current_layer) = dao then

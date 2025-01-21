@@ -1,11 +1,7 @@
 asm StateBasedDAO
 
 
-
-
-import ../../lib/asmeta/CTLlibrary
 import ../../lib/asmeta/StandardLibrary
-import ../../lib/attackers/SelfdestructAttacker
 import ../../lib/solidity/EVMlibrary
 
 
@@ -25,9 +21,6 @@ signature:
 	static deposit : Function
 	static withdraw : Function 
 	
-	
-
-
 	
 	
 definitions:
@@ -123,16 +116,15 @@ definitions:
 	/*
 	 * INVARIANT
 	 */
-	invariant over exception : exception = false
 	
 	invariant over state : current_layer = 0 implies state = INITIALSTATE
 	
 	
-	/*
-	 * CTLSPEC
-	 */
-	CTLSPEC balance(state_dao) >= 20 implies ef(balance(state_dao) < 20)
-	CTLSPEC state = INTRANSITION implies ef(state = INITIALSTATE)
+//	/*
+//	 * CTLSPEC
+//	 */
+//	CTLSPEC balance(state_dao) >= 20 implies ef(balance(state_dao) < 20)
+//	CTLSPEC state = INTRANSITION implies ef(state = INITIALSTATE)
 
 		
 	
@@ -140,19 +132,18 @@ definitions:
 	 * MAIN 
 	 */ 
 	main rule r_Main = 	
-		if not is_contract(executing_contract(current_layer)) then
+		if current_layer = 0 then
 			r_Transaction[user, random_user, random_amount, random_function]
 		else
 			if executing_contract(current_layer) = state_dao then
 				par 
 					r_Deposit[]
 					r_Withdraw[]
+					r_Fallback[]
 				endpar
-			else 
-				r_Attacker[]
 			endif
 		endif
-			
+
 
 
 
@@ -163,9 +154,9 @@ default init s0:
 	/*
 	 * LIBRARY FUNCTION INITIZLIZATIONS
 	 */
-	function executing_function ($sl in StackLayer) = if $sl = 0 then none endif 
-	function executing_contract ($cl in StackLayer) = if $cl = 0 then user endif
-	function instruction_pointer ($sl in StackLayer) = if $sl = 0 then 0 endif
+	function executing_function ($sl in StackLayer) = none
+	function executing_contract ($cl in StackLayer) = user
+	function instruction_pointer ($sl in StackLayer) = 0
 	function current_layer = 0
 	function balance($c in User) = 10
 	function destroyed($u in User) = false
@@ -177,6 +168,7 @@ default init s0:
 			otherwise false
 		endswitch
 	function exception = false
+
 	
 	
 	/*

@@ -18,7 +18,7 @@ signature:
 	/* USER ATTRIBUTES */
 	dynamic controlled balance : User -> MoneyAmount 
 	dynamic controlled destroyed : User -> Boolean
-	derived is_contract : User -> Boolean
+	static is_contract : User -> Boolean
 	
 	/* METHOD ATTRIBUTE */
 	dynamic controlled payable : Function -> Boolean
@@ -45,7 +45,10 @@ signature:
 	monitored random_amount : MoneyAmount
 	
 	/* EXCEPTION */
-	dynamic controlled exception :Boolean
+	dynamic controlled exception : Boolean
+	
+	
+	//dynamic controlled stage : Integer
 	
 	
 	/* ABSTRACT DOMAIN DEFINITION FOR EVM */
@@ -61,8 +64,8 @@ definitions:
 	
 	/* DOMAIN AND FUNCTION DEFINITION */
 	domain MoneyAmount = {-3 : 30}
-	domain StackLayer = {0 : 10}
-	domain InstructionPointer = {0 : 5}
+	domain StackLayer = {0 : 2}
+	domain InstructionPointer = {0 : 7}
 	domain GeneralInteger = {0 : 4}
 	
 	
@@ -81,29 +84,29 @@ definitions:
 	 * TRANSACTION RULE
 	 */
 	macro rule r_Transaction($s in User, $r in User, $n in MoneyAmount, $f in Function) =
-		if balance($s) >= $n and $n >= 0 and not destroyed($r)then
-			if (is_contract($r) and $n > 0) implies payable($f) then
-				let ($cl = current_layer) in
+		if ($s != $r and balance($s) >= $n and $n >= 0 and not destroyed($r) and ((is_contract($r) and $n > 0) implies payable($f))) then
+			par
+				seq
+					balance($s) := balance($s) - $n 
+					balance($r) := balance($r) + $n 
+				endseq
+				if is_contract($r) then
 					par
-						balance($s) := balance($s) - $n // subtracts the amount from the sender user balance
-						balance($r) := balance($r) + $n // adds the amount to the dest user balance
-						if is_contract($r) then
-							par
-								sender($cl + 1) := $s // set the transition attribute to the sender user
-								amount($cl + 1) := $n // set the transaction attribute to the amount of coin to transfer
-								current_layer := $cl + 1
-								executing_contract($cl + 1) := $r
-								executing_function($cl + 1) := $f
-								instruction_pointer($cl + 1) := 0
-							endpar
-						endif
-						if is_contract($s) then 
-							instruction_pointer($cl) := instruction_pointer($cl) + 1
-						endif
+						sender(current_layer + 1) := $s 
+						amount(current_layer + 1) := $n 
+						executing_contract(current_layer + 1) := $r
+						executing_function(current_layer + 1) := $f
+						instruction_pointer(current_layer + 1) := 0
+						current_layer := current_layer + 1
+						exception := false
 					endpar
-				endlet
-			endif
+				endif
+				if is_contract($s) then 
+					instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+				endif
+			endpar
 		endif
+
 		
 		
 	/* 
@@ -115,16 +118,24 @@ definitions:
 	/*
 	 * REQUIRE RULE
 	 */
+	 
+		
+	macro rule r_Throw = 
+		par
+			exception := true
+			r_Ret[]
+		endpar
+	
 	macro rule r_Require ($b in Boolean) = 
 		let ($cl = current_layer) in
 			if $b then
 				instruction_pointer($cl) := instruction_pointer($cl) + 1
 			else 
-				
-				exception := true
+				r_Throw[]
 			endif
 		endlet
 		
+
 		
 	macro rule r_Selfdestruct ($u in User) =
 		if is_contract($u) then
