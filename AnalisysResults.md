@@ -17,3 +17,24 @@
 |----|----|----|----|----|----|
 |NuSMV|0|1|1|1|1|
 |Sym. Exec|0|1|0|1|0|
+
+# Airdrop
+- **a** : _if a call to receive_airdrop is made and no exceptions are raised then the value for msg.sender of received_airdrop is true_
+- **b** : _If a call to receive_airdrop is made from an account with received_airdrop set to 0, an exception is not raised._
+- **c** : _user_balance value must always be less than or equal to airdrop_amount_
+
+## Ground Truth
+
+|a|b|c|
+|----|----|----|
+|1|0|1|
+
+## Analysis results
+
+||a|b|c|
+|----|----|----|----|
+|NuSMV|1|1|1|
+|Sym. Exec|1|0|1|
+
+
+# Crowdfund
