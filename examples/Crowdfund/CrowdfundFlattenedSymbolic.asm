@@ -60,20 +60,23 @@ signature:
 	dynamic controlled boolean_return : Boolean
 	
 	/* GENERAL MONITORED FUNCTION */
-	controlled random_user : Integer -> User
+	controlled random_sender : Integer -> User
+	controlled random_receiver : Integer -> User
 	controlled random_function : Integer -> Function
-	controlled random_amount :Integer -> MoneyAmount
+	controlled random_amount : Integer -> MoneyAmount
 	
 	/* EXCEPTION */
 	dynamic controlled exception : Boolean
 	
-	dynamic controlled stage : Integer
+	controlled stage : Integer
+	
 	
 	
 	/* ABSTRACT DOMAIN DEFINITION FOR EVM */
 	static none : Function
 	
 	static user : User
+	//static user2 : User
 	
 	
 	
@@ -93,6 +96,7 @@ signature:
 	dynamic controlled block_number : GeneralInteger
 	
 	dynamic controlled old_balance : User -> MoneyAmount
+	dynamic controlled old_donors : User -> MoneyAmount
 	
 	
 	static crowdfund : User
@@ -122,6 +126,7 @@ definitions:
 	function is_contract ($u in User) =
 		switch $u 
 			case user : false
+			//case user2 : false
 			otherwise true
 		endswitch
 		
@@ -226,11 +231,13 @@ definitions:
 					r_Require[block_number >= end_donate]
 				case 1 : 
 					r_Require[balance(crowdfund) >= goal]
-				case 2 : 
-					r_Transaction[crowdfund, owner, balance(crowdfund), none]
+				case 2 :
+					r_Require[sender(current_layer) = owner]
 				case 3 : 
+					r_Transaction[crowdfund, sender(current_layer), balance(crowdfund), none]
+				case 4 : 
 					r_Require[exception]
-				case 4 :
+				case 5 :
 					r_Ret[]
 			endswitch
 		endif
@@ -246,7 +253,7 @@ definitions:
 				case 1 : 
 					r_Require[balance(crowdfund) < goal]
 				case 2 : 
-					r_Require[donors(sender(current_layer)) > 0]
+					r_Require[donors(sender(current_layer)) >= 0]
 				case 3 : 
 					par
 						local_amount(current_layer) := donors(sender(current_layer))
@@ -291,9 +298,20 @@ definitions:
 	/*
 	 * INVARIANT
 	 */
+	// se viene fatta una chiamata a donate, e non sono state sollevate eccezioni, allora donors(msg.sender) è maggiore di 0
 	invariant over donors : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = donate and sender(1) = user and not exception) implies (donors(user) > 0)
 	
+	// anche se viene fatta una chiamata a donate e la fase di donazione è finita, non viene sollevata un eccezione
+	invariant over exception : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = donate and block_number > end_donate) implies (not exception)
+
+	// se viene completata una chiamata a withdraw senza che siano state alzate eccezioni, allora il sender era l'owner del contratto
+	invariant over owner : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = withdraw and not exception) implies (sender(1) = owner)
 	
+	// se viene fatta una chiamata a reclaim ma tutti i donors valgono 0 allora viene alzata un'eccezione 
+	invariant over exception : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = reclaim and not (exist $u in User with old_donors($u) > 0)) implies (exception)
+	
+	// se viene fatta una chiamta a reclaim da user, e il donors di user è maggiore di 0 allora dopo la chiamata donors vale 0
+	invariant over donors : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = reclaim and sender(1) = user and old_donors(user) > 0) implies (donors(user) = 0) 
 	
 	/*
 	 * MAIN 
@@ -302,17 +320,18 @@ definitions:
 		par
 			if current_layer = 0 then
 				if not exception then
-					let ($s = user) in
-						let ($r = random_user(stage)) in 
-							let ($n = random_amount(stage)) in 
-								let($f = random_function(stage)) in
-									par
-										block_number := block_number + 1
-										r_Transaction[$s, $r, $n, $f]
-										forall $u in User with true do
+					let ($r = random_receiver(stage)) in
+						let ($n = random_amount(stage)) in 
+							let ($f = random_function(stage)) in
+								par
+									block_number := block_number + 1
+									r_Transaction[user, $r, $n, $f]
+									forall $u in User with true do
+										par
 											old_balance($u) := balance($u)
-									endpar
-								endlet
+											old_donors($u) := donors($u)
+										endpar
+								endpar
 							endlet
 						endlet
 					endlet
@@ -329,6 +348,7 @@ definitions:
 			endif
 			stage := stage + 1
 		endpar
+			
 
 
 
@@ -343,7 +363,7 @@ default init s0:
 	function executing_contract ($cl in StackLayer) = user
 	function instruction_pointer ($sl in StackLayer) = 0
 	function current_layer = 0
-	function balance($c in User) = 3
+	//function balance($c in User) = 3
 	function destroyed($u in User) = false
 	function payable($f in Function) = 
 		switch $f
@@ -356,7 +376,6 @@ default init s0:
 	function exception = false
 	
 	function stage = 0
-	
 	
 	/*
 	 * MODEL FUNCTION INITIALIZATION

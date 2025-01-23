@@ -38,3 +38,23 @@
 
 
 # Crowdfund
+
+- **a** : _if a call to donate is made, and no exceptions have been raised, then donors(msg.sender) is greater than 0_
+- **b** : _even if a call to donate is made and the donation phase is over, an exception is not raised_
+- **c** : _if a call to withdraw completes without any exceptions being raised, then the sender was the owner of the contract_
+- **d** : _if a call to reclaim is made but all donors have a value of 0 then an exception is raised_
+- **e** : _if a call to reclaim is made by user, and the user's donors is greater than 0 then after the donors call it is 0_
+
+## Ground Truth
+
+|a|b|c|d|e|
+|----|----|----|----|----|
+|0|0|1|1|1|
+
+## Analysis results
+||a|b|c|d|e|
+|----|----|----|----|----|----|
+|NuSMV|-|-|-|-|-|
+|Sym. Exec|1|0|1|1|1|
+
+
