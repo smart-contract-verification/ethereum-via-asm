@@ -199,7 +199,7 @@ definitions:
 				r_Transaction[kotET, king, claim_price, none]
 			case 2: 
 				par
-					king := sender
+					king := sender(current_layer)
 					instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
 				endpar
 			case 3:

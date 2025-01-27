@@ -1,4 +1,4 @@
-asm AuctionFlattened_V1
+asm Lottery_V1
 
 
 
@@ -83,25 +83,26 @@ signature:
 	
 	/* --------------------------------------------CONTRACT MODEL FUNCTIONS-------------------------------------------- */
 
-	dynamic controlled currentFrontrunner : User
-	dynamic controlled currentBid : MoneyAmount
-	
-	dynamic controlled owner : User
-	
-	controlled old_frontrunner : User
-	controlled old_bid : MoneyAmount
-	controlled old_balance : User -> MoneyAmount
 
-
-	/* USER and METHODS */
-	static auction : User
 	
-	static bid : Function
-	static destroy : Function
+	dynamic controlled start : GeneralInteger
+	dynamic controlled duration : GeneralInteger
+	dynamic controlled fee : MoneyAmount
 	
+	dynamic controlled winner : User
 	
-
-
+	dynamic controlled picked : Boolean
+	dynamic controlled prev_length : GeneralInteger
+	
+	dynamic controlled has_called_enter : User -> Boolean
+	monitored random_winner : User
+	
+	dynamic controlled block_number : GeneralInteger
+	
+	static lottery : User
+	
+	static enter : Function
+	static pickWinner : Function
 	
 	
 definitions:
@@ -194,55 +195,70 @@ definitions:
 	
 	/* --------------------------------------------CONTRACT MODEL-------------------------------------------- */
 
+
+
 	/* 
-	 * DESTROY FUNCTION RULE
+	 * ENTER FUNCTION RULE
 	 */
-	 
-	rule r_Destroy =
-		if executing_function(current_layer) = destroy then
+	rule r_Enter = 
+		if executing_function(current_layer) = enter then 
 			switch instruction_pointer(current_layer)
 				case 0 : 
-					if sender(current_layer) = owner then
-						r_Selfdestruct[owner]
-					else
-						r_Ret[]
-					endif
-			endswitch
-		endif
-		
-	
-	/* 
-	 * BID FUNCTION RULE
-	 */
-	rule r_Bid = 
-		if executing_function(current_layer) = bid then 
-			switch instruction_pointer(current_layer)
-				case 0 : 
-					r_Require[amount(current_layer) > currentBid]
+					r_Require[amount(current_layer) > 1]
 				case 1 :
-					if isDef(currentFrontrunner) then 
+					par
+						has_called_enter(sender(current_layer)) := true
 						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
-					else
-						instruction_pointer(current_layer) := 4
-					endif
+					endpar
 				case 2 : 
-					r_Transaction[auction, currentFrontrunner, currentBid, none]
-				case 3 : 
-					r_Require[exception]
-				case 4 : 
-					par
-						currentFrontrunner := sender(current_layer) 
-						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
-					endpar
-				case 5 : 
-					par
-						currentBid := amount(current_layer) 
-						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
-					endpar
-				case 6 : 
 					r_Ret[]
 			endswitch
 		endif
+		
+	rule r_PickWinner =
+		if executing_function(current_layer) = pickWinner then
+			switch instruction_pointer(current_layer)
+				case 0 :
+					r_Require[block_number >= start + duration]
+				case 1 : 
+					par
+						if has_called_enter(random_winner) then
+							winner := random_winner
+						else
+							r_Require[false]
+						endif
+						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+					endpar
+				case 2 : 
+					par
+						forall $u in User with true do
+							has_called_enter($u) := false
+						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+					endpar
+				case 3 : 
+					par
+						fee := 1
+						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+					endpar
+				case 4 : 
+					par
+						start := block_number
+						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+					endpar
+				case 5 : 
+					r_Transaction[lottery, sender(current_layer), fee, none]
+				case 6 : 
+					r_Transaction[lottery, winner, balance(lottery), none]
+				case 7 : 
+					r_Ret[]
+			endswitch
+		endif
+
+
+
+
+
+
 	
 	
 	
@@ -252,7 +268,7 @@ definitions:
 	
 	
 	rule r_Fallback =
-		if executing_function(current_layer) != bid and  executing_function(current_layer) != destroy then 
+		if executing_function(current_layer) != enter and  executing_function(current_layer) != pickWinner then 
 			switch instruction_pointer(current_layer)
 				case 0 : 
 					r_Require[false]
@@ -270,17 +286,12 @@ definitions:
 	 * INVARIANT
 	 */
 
-	// la funzione destroy può venir chiamata solamente dall'owner del contratto
-	invariant over sender : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = destroy and not exception) implies (sender(1) = owner)
-	
-	// se viene fatta una chiamata alla funzione bid ed esiste già un current_frontrunner, a questo vengono ritornati i soldi precedentemente versati
-	invariant over balance : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = bid and isDef(old_frontrunner) and not exception and old_frontrunner = user and sender(1) = user) implies (old_balance(user) + old_bid = balance(user))
-	
-	// se faccio una chiamata alla funzione bid con un msg.value maggiore di current_bid allora divento il nuovo current_frontrunner
-	invariant over balance : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = bid and amount(1) > old_bid and not exception) implies (currentFrontrunner = sender(1))
-	
-	// se viene fatta una chiamata alla funzione destroy, tutti i soldi del contratto vanno all'owner
-	invariant over balance : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = destroy and not exception) implies (old_balance(user) + old_balance(auction) = balance(user))
+
+
+
+
+
+
 
 
 	/*
@@ -292,18 +303,15 @@ definitions:
 				let ($r = random_receiver, $n = random_amount, $f = random_function) in
 					par
 						r_Transaction[user, $r, $n, $f]
-						old_bid := currentBid
-						old_frontrunner := currentFrontrunner
-						forall $u in User with true do
-							old_balance($u) := balance($u)
+						block_number := block_number + 1
 					endpar
 				endlet
 			endif
 		else
-			if executing_contract(current_layer) = auction then
+			if executing_contract(current_layer) = lottery then
 				par 
-					r_Destroy[]
-					r_Bid[]
+					r_Enter[]
+					r_PickWinner[]
 					r_Fallback[]
 				endpar
 			endif
@@ -327,8 +335,8 @@ default init s0:
 	function destroyed($u in User) = false
 	function payable($f in Function) = 
 		switch $f
-			case destroy : false
-			case bid : true
+			case enter : true
+			case pickWinner : false
 			otherwise false
 		endswitch
 	function exception = false
@@ -337,12 +345,11 @@ default init s0:
 	/*
 	 * MODEL FUNCTION INITIALIZATION
 	 */
-	function owner = user
-	function currentBid = 0
-	
-	function old_balance ($u in User) = 0
-	function old_bid = 0
-	function old_frontrunner = user
+
+ 	function block_number = 0
+ 	function start = 0
+ 	
+ 	function duration = 5
 		
 
 	
