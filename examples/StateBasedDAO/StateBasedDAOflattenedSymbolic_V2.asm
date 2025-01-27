@@ -1,8 +1,9 @@
-asm StateBasedDAOflattened
+asm StateBasedDAOflattenedSymbolic_V2
 
 
 
 
+//import ../../lib/asmeta/CTLlibrary
 import ../../lib/asmeta/StandardLibrary
 
 
@@ -59,9 +60,11 @@ signature:
 	dynamic controlled boolean_return : Boolean
 	
 	/* GENERAL MONITORED FUNCTION */
-	monitored random_user : User
-	monitored random_function : Function
-	monitored random_amount : MoneyAmount
+	controlled random_user : Integer -> User
+	controlled random_function : Integer -> Function
+	controlled random_amount : Integer -> MoneyAmount
+	
+	controlled stage : Integer
 	
 	/* EXCEPTION */
 	dynamic controlled exception : Boolean
@@ -103,7 +106,7 @@ definitions:
 
 
 	/* DOMAIN AND FUNCTION DEFINITION */
-	domain MoneyAmount = {-1 : 7}
+	domain MoneyAmount = {-1 : 5}
 	domain StackLayer = {0 : 2}
 	domain InstructionPointer = {0 : 7}
 	
@@ -116,26 +119,22 @@ definitions:
 		endswitch
 		
 
-	macro rule r_Ret =
-		current_layer := current_layer - 1 
-		
-
 	rule r_Transaction ($s in User, $r in User, $n in MoneyAmount, $f in Function) =
 		if $n >= 0 and balance($s) >= $n and $s != $r and ((is_contract($r) implies (not destroyed($r)))) and ((is_contract($r) and $n > 0) implies (payable($f))) then 
 			par
 				seq
 					balance($s) := balance($s) - $n 
 					balance($r) := balance($r) + $n
-					exception := false
 				endseq
 				if is_contract($r) then
 					par
-						sender(current_layer + 1) := $s 
-						amount(current_layer + 1) := $n 
+						sender(current_layer + 1) := $s // set the transition attribute to the sender user
+						amount(current_layer + 1) := $n // set the transaction attribute to the amount of coin to transfer
 						current_layer := current_layer + 1
 						executing_contract(current_layer + 1) := $r
 						executing_function(current_layer + 1) := $f
 						instruction_pointer(current_layer + 1) := 0
+						exception := false
 					endpar
 				endif
 				if is_contract($s) then 
@@ -143,14 +142,23 @@ definitions:
 				endif
 			endpar
 		else 
-			if is_contract($s) then 
-				par
+			par
+				if is_contract($s) then 
 					r_Ret[]
-					exception := true
-				endpar
-			endif
+				endif
+				exception := true
+			endpar
 		endif
 		
+	/* 
+	 * RETURN RULE
+	 */
+	macro rule r_Ret =
+		current_layer := current_layer - 1 
+		
+	/*
+	 * REQUIRE RULE
+	 */
 	macro rule r_Require ($b in Boolean) = 
 		let ($cl = current_layer) in
 			if $b then
@@ -228,9 +236,11 @@ definitions:
 					r_Require[customer_balance(sender(current_layer)) > 0]
 				case 3 : 
 					let ($cl = current_layer) in
-						let ($s = state_dao, $r = sender($cl), $f = none) in 
-							let ($n = customer_balance($r)) in
-								r_Transaction[$s, $r, $n-2, $f]
+						let ($r = sender($cl)) in
+							let ($f = none) in 
+								let ($n = customer_balance($r)) in
+									r_Transaction[state_dao, $r, $n+1, $f]
+								endlet
 							endlet
 						endlet
 					endlet
@@ -243,12 +253,12 @@ definitions:
 					else 
 						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
 					endif
-				case 6 : 
+				case 5 : 
 					par
 						state := INITIALSTATE
 						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
 					endpar
-				case 7 :
+				case 6 :
 					r_Ret[]
 			endswitch
 		endif
@@ -272,7 +282,7 @@ definitions:
 	/*
 	 * INVARIANT
 	 */
-	
+	 
 	// if there was no exception and the contract is not running, the contract's state is INITIALSTATE
 	invariant over state : ((current_layer = 0 and not exception) implies (state = INITIALSTATE))
 	
@@ -288,27 +298,34 @@ definitions:
 	// il balance di state_dao è sempre minore o uguale a 20
 	invariant over balance : balance(state_dao) <= 20
 	
-	
-		
 	/*
 	 * MAIN 
 	 */ 
 	main rule r_Main = 
-		if current_layer = 0 then
-			if not exception then
-				let ($s = user, $r = random_user, $n = random_amount, $f = random_function) in
-					r_Transaction[$s, $r, $n, $f]
-				endlet
+		par	
+			if current_layer = 0 then
+				if not exception then
+					let ($s = user) in
+						let ($r = random_user(stage)) in 
+							let ($n = random_amount(stage)) in 
+								let($f = random_function(stage)) in
+									r_Transaction[$s, $r, $n, $f]
+								endlet
+							endlet
+						endlet
+					endlet
+				endif
+			else
+				if executing_contract(current_layer) = state_dao then
+					par 
+						r_Deposit[]
+						r_Withdraw[]
+						r_Fallback[]
+					endpar
+				endif
 			endif
-		else
-			if executing_contract(current_layer) = state_dao then
-				par 
-					r_Deposit[]
-					r_Withdraw[]
-					r_Fallback[]
-				endpar
-			endif
-		endif
+			stage := stage + 1
+		endpar
 			
 
 
@@ -324,7 +341,7 @@ default init s0:
 	function executing_contract ($cl in StackLayer) = user
 	function instruction_pointer ($sl in StackLayer) = 0
 	function current_layer = 0
-	function balance($c in User) = 3
+	function balance($c in User) = if $c = state_dao then 3 else 20 endif
 	function destroyed($u in User) = false
 	function payable($f in Function) = 
 		switch $f
@@ -334,6 +351,8 @@ default init s0:
 			otherwise false
 		endswitch
 	function exception = false
+	
+	function stage = 0
 	
 	
 	/*

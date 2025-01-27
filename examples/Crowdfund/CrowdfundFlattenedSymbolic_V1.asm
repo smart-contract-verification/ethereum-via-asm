@@ -1,4 +1,4 @@
-asm CrowdfundFlattenedSymbolic
+asm CrowdfundFlattenedSymbolic_V1
 
 
 
@@ -234,7 +234,9 @@ definitions:
 				case 2 :
 					r_Require[sender(current_layer) = owner]
 				case 3 : 
-					r_Transaction[crowdfund, sender(current_layer), balance(crowdfund), none]
+					let ($cl = current_layer) in
+						r_Transaction[crowdfund, sender($cl), balance(crowdfund), none]
+					endlet
 				case 4 : 
 					r_Require[exception]
 				case 5 :
@@ -265,7 +267,9 @@ definitions:
 						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1 
 					endpar
 				case 5 : 
-					r_Transaction[crowdfund, sender(current_layer), local_amount(current_layer), none]
+					let ($cl = current_layer) in
+						r_Transaction[crowdfund, sender($cl), local_amount($cl), none]
+					endlet
 				case 6 :
 					r_Require[exception]
 				case 7 : 

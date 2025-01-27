@@ -1,4 +1,4 @@
-asm CrowdfundFlattened
+asm StateBasedDAOflattened_V1
 
 
 
@@ -24,7 +24,6 @@ signature:
 	domain MoneyAmount subsetof Integer
 	domain StackLayer subsetof Integer
 	domain InstructionPointer subsetof Integer
-	domain GeneralInteger subsetof Integer
 	
 	
 	
@@ -60,8 +59,7 @@ signature:
 	dynamic controlled boolean_return : Boolean
 	
 	/* GENERAL MONITORED FUNCTION */
-	monitored random_sender : User
-	monitored random_receiver : User
+	monitored random_user : User
 	monitored random_function : Function
 	monitored random_amount : MoneyAmount
 	
@@ -74,7 +72,6 @@ signature:
 	static none : Function
 	
 	static user : User
-
 	
 	
 	
@@ -83,25 +80,17 @@ signature:
 	
 	/* --------------------------------------------CONTRACT MODEL FUNCTIONS-------------------------------------------- */
 
-	dynamic controlled end_donate : GeneralInteger
-	dynamic controlled goal : MoneyAmount
-	dynamic controlled owner : User
-	dynamic controlled donors : User -> MoneyAmount
+	/* CONTRACT ATTRIBUTES */
+	dynamic controlled customer_balance : User -> MoneyAmount 
 	
-	dynamic controlled local_amount : StackLayer -> MoneyAmount
+	dynamic controlled state : State
 	
 	
-	dynamic controlled block_number : GeneralInteger
+	/* METHODS DEFINITIONS AND USER DEFINITIONS */
+	static state_dao : User
 	
-	dynamic controlled old_balance : User -> MoneyAmount
-	dynamic controlled old_donors : User -> MoneyAmount
-	
-	
-	static crowdfund : User
-	
-	static donate : Function
-	static withdraw : Function
-	static reclaim : Function
+	static deposit : Function
+	static withdraw : Function 
 	
 	
 
@@ -114,10 +103,9 @@ definitions:
 
 
 	/* DOMAIN AND FUNCTION DEFINITION */
-	domain MoneyAmount = {-1 : 7}
+	domain MoneyAmount = {-1 : 10}
 	domain StackLayer = {0 : 2}
 	domain InstructionPointer = {0 : 7}
-	domain GeneralInteger = {-10 : 10}
 	
 	
 	
@@ -128,29 +116,26 @@ definitions:
 		endswitch
 		
 
-	/* 
-	 * RETURN RULE
-	 */
 	macro rule r_Ret =
 		current_layer := current_layer - 1 
 		
-		
+
 	rule r_Transaction ($s in User, $r in User, $n in MoneyAmount, $f in Function) =
 		if $n >= 0 and balance($s) >= $n and $s != $r and ((is_contract($r) implies (not destroyed($r)))) and ((is_contract($r) and $n > 0) implies (payable($f))) then 
 			par
 				seq
 					balance($s) := balance($s) - $n 
 					balance($r) := balance($r) + $n
+					exception := false
 				endseq
 				if is_contract($r) then
 					par
-						sender(current_layer + 1) := $s // set the transition attribute to the sender user
-						amount(current_layer + 1) := $n // set the transaction attribute to the amount of coin to transfer
+						sender(current_layer + 1) := $s 
+						amount(current_layer + 1) := $n 
 						current_layer := current_layer + 1
 						executing_contract(current_layer + 1) := $r
 						executing_function(current_layer + 1) := $f
 						instruction_pointer(current_layer + 1) := 0
-						exception := false
 					endpar
 				endif
 				if is_contract($s) then 
@@ -158,19 +143,14 @@ definitions:
 				endif
 			endpar
 		else 
-			par
-				if is_contract($s) then 
+			if is_contract($s) then 
+				par
 					r_Ret[]
-				endif
-				exception := true
-			endpar
+					exception := true
+				endpar
+			endif
 		endif
 		
-
-		
-	/*
-	 * REQUIRE RULE
-	 */
 	macro rule r_Require ($b in Boolean) = 
 		let ($cl = current_layer) in
 			if $b then
@@ -199,93 +179,86 @@ definitions:
 	/* --------------------------------------------CONTRACT MODEL-------------------------------------------- */
 
 	/* 
-	 * DONATE FUNCTION RULE
+	 * DEPOSIT FUNCTION RULE
 	 */
 	 
-	rule r_Donate = 
-		if executing_function(current_layer) = donate then
+	rule r_Deposit =
+		if executing_function(current_layer) = deposit then 
 			switch instruction_pointer(current_layer)
 				case 0 : 
-					r_Require[block_number <= end_donate]
-				case 1 :
-					par
-						donors(sender(current_layer)) := amount(current_layer)
-						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1 
+					r_Require[state = INITIALSTATE]
+				case 1 : 
+					par 
+						state := INTRANSITION
+						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
 					endpar
-				case 2 :
+				case 2 : 
+					r_Require[balance(state_dao) <= 20]
+				case 3 : 
+					par
+						customer_balance(sender(current_layer)) := customer_balance(sender(current_layer)) + amount(current_layer)
+						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+					endpar
+				case 4 : 
+					par
+						state := INITIALSTATE
+						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+					endpar
+				case 5 : 
 					r_Ret[]
 			endswitch
 		endif
 		
-	
+		
 	/* 
-	 * WITHDRAW FUNCTION RULE
+	 * WITHDARW FUNCTION RULE
 	 */
+	 
 	rule r_Withdraw = 
 		if executing_function(current_layer) = withdraw then
 			switch instruction_pointer(current_layer)
-				case 0 :
-					r_Require[block_number >= end_donate]
+				case 0 : 
+					r_Require[state = INITIALSTATE]
 				case 1 : 
-					r_Require[balance(crowdfund) >= goal]
-				case 2 :
-					r_Require[sender(current_layer) = owner]
-				case 3 : 
-					let ($s = crowdfund, $r = sender(current_layer), $n = balance(crowdfund), $f = none) in
-						r_Transaction[$s, $r, $n, $f]
-					endlet
-				case 4 : 
-					r_Require[exception]
-				case 5 :
-					r_Ret[]
-			endswitch
-		endif
-		
-	/* 
-	 * RECLAIM FUNCTION RULE
-	 */	
-	rule r_Reclaim = 
-		if executing_function(current_layer) = reclaim then
-			switch instruction_pointer(current_layer)
-				case 0 :
-					r_Require[block_number >= end_donate]
-				case 1 : 
-					r_Require[balance(crowdfund) < goal]
+					par 
+						state := INTRANSITION
+						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+					endpar
 				case 2 : 
-					r_Require[donors(sender(current_layer)) >= 0]
+					r_Require[customer_balance(sender(current_layer)) > 0]
 				case 3 : 
-					par
-						local_amount(current_layer) := donors(sender(current_layer))
-						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1 
-					endpar
-				case 4 :
-					par
-						donors(sender(current_layer)) := 0
-						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1 
-					endpar
-				case 5 : 
-					let ($s = crowdfund, $r = sender(current_layer), $n = local_amount(current_layer), $f = none) in
-						r_Transaction[$s, $r, $n, $f]
+					let ($cl = current_layer) in
+						let ($s = state_dao, $r = sender($cl), $f = none) in 
+							let ($n = customer_balance($r)) in
+								r_Transaction[$s, $r, $n-2, $f]
+							endlet
+						endlet
 					endlet
-				case 6 :
-					r_Require[exception]
-				case 7 : 
+				case 4 :
+					if not exception then
+						par
+							customer_balance(sender(current_layer)) := 0
+							r_Ret[]
+						endpar
+					else 
+						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+					endif
+				case 6 : 
+					par
+						state := INITIALSTATE
+						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+					endpar
+				case 7 :
 					r_Ret[]
 			endswitch
 		endif
-	
-	
-	
-	/* 
-	 * FALLBACK FUNCTION RULE
-	 */ 
 	
 	
 	rule r_Fallback =
-		if executing_function(current_layer) != reclaim and  executing_function(current_layer) != withdraw and  executing_function(current_layer) != donate then 
+		if executing_function(current_layer) != deposit and  executing_function(current_layer) != withdraw then 
 			switch instruction_pointer(current_layer)
 				case 0 : 
-					r_Require[false]
+					 r_Require[false]
 			endswitch
 		endif
 	
@@ -299,45 +272,39 @@ definitions:
 	/*
 	 * INVARIANT
 	 */
-	// se viene fatta una chiamata a donate, e non sono state sollevate eccezioni, allora donors(msg.sender) è maggiore di 0
-	invariant over donors : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = donate and sender(1) = user and not exception) implies (donors(user) > 0)
 	
-	// se viene fatta una chiamata a donate, ma la fase di donazione è finita, viene sollevata un eccezione
-	invariant over exception : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = donate and block_number > end_donate) implies (exception)
-
-	// se viene completata una chiamata a withdraw senza che siano state alzate eccezioni, allora il sender era l'owner del contratto
-	invariant over owner : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = withdraw and not exception) implies (sender(1) = owner)
+	// if there was no exception and the contract is not running, the contract's state is INITIALSTATE
+	invariant over state : ((current_layer = 0 and not exception) implies (state = INITIALSTATE))
 	
-	// se viene fatta una chiamata a recplaim ma tutti i donors valgono 0 allora viene alzata un'eccezione 
-	//invariant over exception : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = reclaim and not (exist $u in User with old_donors($u) > 0)) implies (exception)
+	//se viene fatta una chiamata a deposit con un valore di msg.sender maggiore di 0 allora non alza un eccezione
+	invariant over exception : ((executing_contract(1) = state_dao) and (executing_function(1) = deposit) and (amount(1) > 0) and state = INITIALSTATE) implies (exception = false)
 	
-	// se viene fatta una chiamta a reclaim da user1, e il donors di user1 è maggiore di 0 allora sopo la chiamata donors vale 0
-	//invariant over donors : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = reclaim and sender(1) = user1 and old_donors(user1) > 0) implies (donors(user1) = 0) 
+	// non viene alzata una eccezione anche se viene fatta una chiamata a deposit e il balance di state_dao è maggiore di 20
+	invariant over exception : ((executing_contract(1) = state_dao and executing_function(1) = deposit and balance(state_dao) > 20) implies (exception = false))
 	
+	// il balance di state_dao è sempre maggliore o uguale a 3
+	invariant over balance : balance(state_dao) >= 3
+	
+	// il balance di state_dao è sempre minore o uguale a 20
+	invariant over balance : balance(state_dao) <= 20
+	
+	
+		
 	/*
 	 * MAIN 
 	 */ 
 	main rule r_Main = 
 		if current_layer = 0 then
 			if not exception then
-				let ($r = random_receiver, $n = random_amount, $f = random_function) in
-					par
-						block_number := block_number + 1
-						r_Transaction[user, $r, $n, $f]
-						forall $u in User with true do
-							par
-								old_balance($u) := balance($u)
-								old_donors($u) := donors($u)
-							endpar
-					endpar
+				let ($s = user, $r = random_user, $n = random_amount, $f = random_function) in
+					r_Transaction[$s, $r, $n, $f]
 				endlet
 			endif
 		else
-			if executing_contract(current_layer) = crowdfund then
+			if executing_contract(current_layer) = state_dao then
 				par 
-					r_Donate[]
+					r_Deposit[]
 					r_Withdraw[]
-					r_Reclaim[]
 					r_Fallback[]
 				endpar
 			endif
@@ -361,10 +328,9 @@ default init s0:
 	function destroyed($u in User) = false
 	function payable($f in Function) = 
 		switch $f
-			case donate : true
-			case none : true
+			case deposit : true
 			case withdraw : false
-			case reclaim : false
+			case none : true
 			otherwise false
 		endswitch
 	function exception = false
@@ -373,13 +339,8 @@ default init s0:
 	/*
 	 * MODEL FUNCTION INITIALIZATION
 	 */
-	function owner = user
-	function end_donate = 7
-	function goal = 10
-	
-	function donors ($u in User) = 0
-	
-	function block_number = 0
+	function customer_balance($c in User) = 0
+	function state = INITIALSTATE
 		
 
 	

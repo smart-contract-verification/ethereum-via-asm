@@ -1,4 +1,4 @@
-asm AirdropFlattened
+asm AuctionFlattened_V1
 
 
 
@@ -24,6 +24,7 @@ signature:
 	domain MoneyAmount subsetof Integer
 	domain StackLayer subsetof Integer
 	domain InstructionPointer subsetof Integer
+	domain GeneralInteger subsetof Integer
 	
 	
 	
@@ -59,7 +60,8 @@ signature:
 	dynamic controlled boolean_return : Boolean
 	
 	/* GENERAL MONITORED FUNCTION */
-	monitored random_user : User
+	monitored random_sender : User
+	monitored random_receiver : User
 	monitored random_function : Function
 	monitored random_amount : MoneyAmount
 	
@@ -72,6 +74,7 @@ signature:
 	static none : Function
 	
 	static user : User
+
 	
 	
 	
@@ -80,19 +83,21 @@ signature:
 	
 	/* --------------------------------------------CONTRACT MODEL FUNCTIONS-------------------------------------------- */
 
-	dynamic controlled user_balance : User -> MoneyAmount 
-	dynamic controlled received_airdrop : User -> Boolean
-	dynamic controlled old_received_airdrop : User -> Boolean
+	dynamic controlled currentFrontrunner : User
+	dynamic controlled currentBid : MoneyAmount
 	
-	monitored transaction_return : Boolean
+	dynamic controlled owner : User
 	
-	dynamic controlled airdrop_amount : MoneyAmount
+	controlled old_frontrunner : User
+	controlled old_bid : MoneyAmount
+	controlled old_balance : User -> MoneyAmount
+
+
+	/* USER and METHODS */
+	static auction : User
 	
-	/* METHODS DEFINITIONS AND USER DEFINITIONS */
-	static airdrop : User
-	
-	static receive_airdrop : Function
-	static can_receive_airdrop : Function
+	static bid : Function
+	static destroy : Function
 	
 	
 
@@ -108,6 +113,7 @@ definitions:
 	domain MoneyAmount = {-1 : 7}
 	domain StackLayer = {0 : 2}
 	domain InstructionPointer = {0 : 7}
+	domain GeneralInteger = {-10 : 10}
 	
 	
 	
@@ -188,31 +194,55 @@ definitions:
 	
 	/* --------------------------------------------CONTRACT MODEL-------------------------------------------- */
 
-		/* 
-	 * DEPOSIT FUNCTION RULE
+	/* 
+	 * DESTROY FUNCTION RULE
 	 */
 	 
-	rule r_Receive_airdrop =
-		let ($cl = current_layer) in
-			let ($scl = sender($cl)) in
-				if executing_function($cl) = receive_airdrop then 
-					switch instruction_pointer($cl)
-						case 0 : 
-							r_Require[not received_airdrop(sender($cl))]
-						case 1 : 
-							r_Transaction[airdrop, sender($cl), 1, can_receive_airdrop]
-						case 2 : 
-							par
-								user_balance(sender($cl)) := user_balance(sender($cl)) + airdrop_amount
-								received_airdrop(sender($cl)) := true
-								instruction_pointer($cl) := instruction_pointer($cl) + 1
-							endpar
-						case 3 : 
-							r_Ret[]
-					endswitch
-				endif
-			endlet
-		endlet
+	rule r_Destroy =
+		if executing_function(current_layer) = destroy then
+			switch instruction_pointer(current_layer)
+				case 0 : 
+					if sender(current_layer) = owner then
+						r_Selfdestruct[owner]
+					else
+						r_Ret[]
+					endif
+			endswitch
+		endif
+		
+	
+	/* 
+	 * BID FUNCTION RULE
+	 */
+	rule r_Bid = 
+		if executing_function(current_layer) = bid then 
+			switch instruction_pointer(current_layer)
+				case 0 : 
+					r_Require[amount(current_layer) > currentBid]
+				case 1 :
+					if isDef(currentFrontrunner) then 
+						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+					else
+						instruction_pointer(current_layer) := 4
+					endif
+				case 2 : 
+					r_Transaction[auction, currentFrontrunner, currentBid, none]
+				case 3 : 
+					r_Require[exception]
+				case 4 : 
+					par
+						currentFrontrunner := sender(current_layer) 
+						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+					endpar
+				case 5 : 
+					par
+						currentBid := amount(current_layer) 
+						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+					endpar
+				case 6 : 
+					r_Ret[]
+			endswitch
+		endif
 	
 	
 	
@@ -222,10 +252,10 @@ definitions:
 	
 	
 	rule r_Fallback =
-		if executing_function(current_layer) != receive_airdrop then 
+		if executing_function(current_layer) != bid and  executing_function(current_layer) != destroy then 
 			switch instruction_pointer(current_layer)
 				case 0 : 
-					 r_Require[false]
+					r_Require[false]
 			endswitch
 		endif
 	
@@ -239,34 +269,41 @@ definitions:
 	/*
 	 * INVARIANT
 	 */
+
+	// la funzione destroy può venir chiamata solamente dall'owner del contratto
+	invariant over sender : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = destroy and not exception) implies (sender(1) = owner)
 	
-	// se viene fatta una chiamata a receive_airdrop e non sono state alzate eccezioni allora il valore per msg.sender di received_airdrop è true
-	invariant over received_airdrop : (current_layer = 0 and executing_contract(1) = airdrop and executing_function(1) = receive_airdrop and not exception and sender(1) = user)implies(received_airdrop(user))
+	// se viene fatta una chiamata alla funzione bid ed esiste già un current_frontrunner, a questo vengono ritornati i soldi precedentemente versati
+	invariant over balance : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = bid and isDef(old_frontrunner) and not exception and old_frontrunner = user and sender(1) = user) implies (old_balance(user) + old_bid = balance(user))
 	
-	// se viene fatta una chiamata a receive_airdrop da un account con received_airdrop a 0,  non viene sollevata un eccezione
-	invariant over exception : (current_layer = 0 and executing_contract(1) = airdrop and executing_function(1) = receive_airdrop and sender(1) = user and not old_received_airdrop(user)) implies (not exception)
+	// se faccio una chiamata alla funzione bid con un msg.value maggiore di current_bid allora divento il nuovo current_frontrunner
+	invariant over balance : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = bid and amount(1) > old_bid and not exception) implies (currentFrontrunner = sender(1))
 	
-	// il valore di user_balance deve essere sempre minore o uguale ad airdrop_amount
-	invariant over user_balance : (current_layer = 0 and not exception) implies (forall $u in User with user_balance($u) <= airdrop_amount)
-		
+	// se viene fatta una chiamata alla funzione destroy, tutti i soldi del contratto vanno all'owner
+	invariant over balance : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = destroy and not exception) implies (old_balance(user) + old_balance(auction) = balance(user))
+
+
 	/*
 	 * MAIN 
 	 */ 
 	main rule r_Main = 
 		if current_layer = 0 then
 			if not exception then
-				let ($s = user, $r = random_user, $n = random_amount, $f = random_function) in
+				let ($r = random_receiver, $n = random_amount, $f = random_function) in
 					par
-						r_Transaction[$s, $r, $n, $f]
+						r_Transaction[user, $r, $n, $f]
+						old_bid := currentBid
+						old_frontrunner := currentFrontrunner
 						forall $u in User with true do
-							old_received_airdrop($u) := received_airdrop($u)
+							old_balance($u) := balance($u)
 					endpar
 				endlet
 			endif
 		else
-			if executing_contract(current_layer) = airdrop then
+			if executing_contract(current_layer) = auction then
 				par 
-					r_Receive_airdrop[]
+					r_Destroy[]
+					r_Bid[]
 					r_Fallback[]
 				endpar
 			endif
@@ -290,8 +327,8 @@ default init s0:
 	function destroyed($u in User) = false
 	function payable($f in Function) = 
 		switch $f
-			case receive_airdrop : false
-			case none : true
+			case destroy : false
+			case bid : true
 			otherwise false
 		endswitch
 	function exception = false
@@ -300,9 +337,12 @@ default init s0:
 	/*
 	 * MODEL FUNCTION INITIALIZATION
 	 */
-	function user_balance($c in User) = 0
-	function received_airdrop($u in User) = false
-	function airdrop_amount = 1
+	function owner = user
+	function currentBid = 0
+	
+	function old_balance ($u in User) = 0
+	function old_bid = 0
+	function old_frontrunner = user
 		
 
 	

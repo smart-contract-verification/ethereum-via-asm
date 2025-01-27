@@ -7,16 +7,26 @@
 
 ## Ground Truth
 
-|a|b|c|d|e|
-|----|----|----|----|----|
-|0|0|0|1|0|
+||a|b|c|d|e|
+|----|----|----|----|----|----|
+|V1|0|0|0|1|0|
+|V2|0|0|0|0|0|
 
 ## Analysis results
+
+- **V1**
 
 ||a|b|c|d|e|
 |----|----|----|----|----|----|
 |NuSMV|0|1|1|1|1|
-|Sym. Exec|0|1|0|1|0|
+|Sym. Exec|0|1~|0|1~|0|
+
+- **V2**
+
+||a|b|c|d|e|
+|----|----|----|----|----|----|
+|NuSMV|0|1|1|0|1|
+|Sym. Exec|0|1~|0|0|0|
 
 # Airdrop
 - **a** : _if a call to receive_airdrop is made and no exceptions are raised then the value for msg.sender of received_airdrop is true_
@@ -47,14 +57,55 @@
 
 ## Ground Truth
 
-|a|b|c|d|e|
-|----|----|----|----|----|
-|0|0|1|1|1|
+||a|b|c|d|e|
+|----|----|----|----|----|----|
+|V1|0|0|1|1|1|
+|V2|0|0|0|1|1|
 
 ## Analysis results
+
+- **V1**
+
 ||a|b|c|d|e|
 |----|----|----|----|----|----|
 |NuSMV|-|-|-|-|-|
-|Sym. Exec|1|0|1|1|1|
+|Sym. Exec|1~|0|1|1|1|
+
+- **V2**
 
 
+||a|b|c|d|e|
+|----|----|----|----|----|----|
+|NuSMV|-|-|-|-|-|
+|Sym. Exec|1~|1|1|1|1|
+
+# Auction
+
+- **a** : _The destroy function can only be called by the owner of the contract_
+- **b** : _If a call is made to the bid function and a current_frontrunner already exists, the previously deposited money is returned to it_
+- **c** : _if I make a call to the bid function with a msg.value greater than current_bid then I become the new current_frontrunner_
+- **d** : _if a call is made to the destroy function, all the money in the contract goes to the owner_
+
+## Ground Truth
+
+||a|b|c|d|
+|----|----|----|----|----|
+|V1|1|1|1|1|
+|V2|0|1|1|1|
+
+
+## Analysis results
+
+- **V1**
+
+||a|b|c|d|
+|----|----|----|----|----|
+|NuSMV|1|1|1|0|
+|Sym. Exec|1|1|1|1|
+
+- **V2**
+
+||a|b|c|d|
+|----|----|----|----|----|
+|NuSMV|-|-|-|-|
+|Sym. Exec|0|1|1|1|

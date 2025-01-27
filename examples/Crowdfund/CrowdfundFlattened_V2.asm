@@ -1,4 +1,4 @@
-asm AuctionFlattened
+asm CrowdfundFlattened_V2
 
 
 
@@ -74,6 +74,7 @@ signature:
 	static none : Function
 	
 	static user : User
+	static user2 : User
 
 	
 	
@@ -83,21 +84,25 @@ signature:
 	
 	/* --------------------------------------------CONTRACT MODEL FUNCTIONS-------------------------------------------- */
 
-	dynamic controlled currentFrontrunner : User
-	dynamic controlled currentBid : MoneyAmount
-	
+	dynamic controlled end_donate : GeneralInteger
+	dynamic controlled goal : MoneyAmount
 	dynamic controlled owner : User
+	dynamic controlled donors : User -> MoneyAmount
 	
-	controlled old_frontrunner : User
-	controlled old_bid : MoneyAmount
-	controlled old_balance : User -> MoneyAmount
-
-
-	/* USER and METHODS */
-	static auction : User
+	dynamic controlled local_amount : StackLayer -> MoneyAmount
 	
-	static bid : Function
-	static destroy : Function
+	
+	dynamic controlled block_number : GeneralInteger
+	
+	dynamic controlled old_balance : User -> MoneyAmount
+	dynamic controlled old_donors : User -> MoneyAmount
+	
+	
+	static crowdfund : User
+	
+	static donate : Function
+	static withdraw : Function
+	static reclaim : Function
 	
 	
 
@@ -120,6 +125,7 @@ definitions:
 	function is_contract ($u in User) =
 		switch $u 
 			case user : false
+			case user2 : false
 			otherwise true
 		endswitch
 		
@@ -195,51 +201,75 @@ definitions:
 	/* --------------------------------------------CONTRACT MODEL-------------------------------------------- */
 
 	/* 
-	 * DESTROY FUNCTION RULE
+	 * DONATE FUNCTION RULE
 	 */
 	 
-	rule r_Destroy =
-		if executing_function(current_layer) = destroy then
+	rule r_Donate = 
+		if executing_function(current_layer) = donate then
 			switch instruction_pointer(current_layer)
 				case 0 : 
-					if sender(current_layer) = owner then
-						r_Selfdestruct[owner]
-					else
-						r_Ret[]
-					endif
+					r_Require[block_number <= end_donate]
+				case 1 :
+					par
+						donors(sender(current_layer)) := amount(current_layer)
+						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1 
+					endpar
+				case 2 :
+					r_Ret[]
 			endswitch
 		endif
 		
 	
 	/* 
-	 * BID FUNCTION RULE
+	 * WITHDRAW FUNCTION RULE
 	 */
-	rule r_Bid = 
-		if executing_function(current_layer) = bid then 
+	rule r_Withdraw = 
+		if executing_function(current_layer) = withdraw then
 			switch instruction_pointer(current_layer)
-				case 0 : 
-					r_Require[amount(current_layer) > currentBid]
-				case 1 :
-					if isDef(currentFrontrunner) then 
-						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
-					else
-						instruction_pointer(current_layer) := 4
-					endif
+				case 0 :
+					r_Require[block_number >= end_donate]
+				case 1 : 
+					r_Require[balance(crowdfund) >= goal]
 				case 2 : 
-					r_Transaction[auction, currentFrontrunner, currentBid, none]
+					let ($s = crowdfund, $r = sender(current_layer), $n = balance(crowdfund), $f = none) in
+						r_Transaction[$s, $r, $n, $f]
+					endlet
 				case 3 : 
 					r_Require[exception]
-				case 4 : 
+				case 4 :
+					r_Ret[]
+			endswitch
+		endif
+		
+	/* 
+	 * RECLAIM FUNCTION RULE
+	 */	
+	rule r_Reclaim = 
+		if executing_function(current_layer) = reclaim then
+			switch instruction_pointer(current_layer)
+				case 0 :
+					r_Require[block_number >= end_donate]
+				case 1 : 
+					r_Require[balance(crowdfund) < goal]
+				case 2 : 
+					r_Require[donors(sender(current_layer)) >= 0]
+				case 3 : 
 					par
-						currentFrontrunner := sender(current_layer) 
-						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+						local_amount(current_layer) := donors(sender(current_layer))
+						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1 
+					endpar
+				case 4 :
+					par
+						donors(sender(current_layer)) := 0
+						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1 
 					endpar
 				case 5 : 
-					par
-						currentBid := amount(current_layer) 
-						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
-					endpar
-				case 6 : 
+					let ($s = crowdfund, $r = sender(current_layer), $n = local_amount(current_layer), $f = none) in
+						r_Transaction[$s, $r, $n, $f]
+					endlet
+				case 6 :
+					r_Require[exception]
+				case 7 : 
 					r_Ret[]
 			endswitch
 		endif
@@ -252,7 +282,7 @@ definitions:
 	
 	
 	rule r_Fallback =
-		if executing_function(current_layer) != bid and  executing_function(current_layer) != destroy then 
+		if executing_function(current_layer) != reclaim and  executing_function(current_layer) != withdraw and  executing_function(current_layer) != donate then 
 			switch instruction_pointer(current_layer)
 				case 0 : 
 					r_Require[false]
@@ -270,40 +300,47 @@ definitions:
 	 * INVARIANT
 	 */
 
-	// la funzione destroy può venir chiamata solamente dall'owner del contratto
-	invariant over sender : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = destroy and not exception) implies (sender(1) = owner)
+	// se viene fatta una chiamata a donate, e non sono state sollevate eccezioni, allora donors(msg.sender) è maggiore di 0
+	invariant over donors : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = donate and sender(1) = user and not exception) implies (donors(user) > 0)
 	
-	// se viene fatta una chiamata alla funzione bid ed esiste già un current_frontrunner, a questo vengono ritornati i soldi precedentemente versati
-	invariant over balance : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = bid and isDef(old_frontrunner) and not exception and old_frontrunner = user and sender(1) = user) implies (old_balance(user) + old_bid = balance(user))
-	
-	// se faccio una chiamata alla funzione bid con un msg.value maggiore di current_bid allora divento il nuovo current_frontrunner
-	invariant over balance : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = bid and amount(1) > old_bid and not exception) implies (currentFrontrunner = sender(1))
-	
-	// se viene fatta una chiamata alla funzione destroy, tutti i soldi del contratto vanno all'owner
-	invariant over balance : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = destroy and not exception) implies (old_balance(user) + old_balance(auction) = balance(user))
+	// anche se viene fatta una chiamata a donate e la fase di donazione è finita, non viene sollevata un eccezione
+	invariant over exception : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = donate and block_number > end_donate) implies (not exception)
 
-
+	// se viene completata una chiamata a withdraw senza che siano state alzate eccezioni, allora il sender era l'owner del contratto
+	invariant over owner : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = withdraw and not exception) implies (sender(1) = owner)
+	
+	// se viene fatta una chiamata a reclaim ma tutti i donors valgono 0 allora viene alzata un'eccezione 
+	invariant over exception : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = reclaim and not (exist $u in User with old_donors($u) > 0)) implies (exception)
+	
+	// se viene fatta una chiamta a reclaim da user, e il donors di user è maggiore di 0 allora dopo la chiamata donors vale 0
+	invariant over donors : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = reclaim and sender(1) = user and old_donors(user) > 0) implies (donors(user) = 0) 
+	
 	/*
 	 * MAIN 
 	 */ 
 	main rule r_Main = 
 		if current_layer = 0 then
 			if not exception then
-				let ($r = random_receiver, $n = random_amount, $f = random_function) in
-					par
-						r_Transaction[user, $r, $n, $f]
-						old_bid := currentBid
-						old_frontrunner := currentFrontrunner
-						forall $u in User with true do
-							old_balance($u) := balance($u)
-					endpar
+				let ($s = random_sender, $r = random_receiver, $n = random_amount, $f = random_function) in
+					if not is_contract($s) then
+						par
+							block_number := block_number + 1
+							r_Transaction[$s, $r, $n, $f]
+							forall $u in User with true do
+								par
+									old_balance($u) := balance($u)
+									old_donors($u) := donors($u)
+								endpar
+						endpar
+					endif
 				endlet
 			endif
 		else
-			if executing_contract(current_layer) = auction then
+			if executing_contract(current_layer) = crowdfund then
 				par 
-					r_Destroy[]
-					r_Bid[]
+					r_Donate[]
+					r_Withdraw[]
+					r_Reclaim[]
 					r_Fallback[]
 				endpar
 			endif
@@ -327,8 +364,10 @@ default init s0:
 	function destroyed($u in User) = false
 	function payable($f in Function) = 
 		switch $f
-			case destroy : false
-			case bid : true
+			case donate : true
+			case none : true
+			case withdraw : false
+			case reclaim : false
 			otherwise false
 		endswitch
 	function exception = false
@@ -338,11 +377,12 @@ default init s0:
 	 * MODEL FUNCTION INITIALIZATION
 	 */
 	function owner = user
-	function currentBid = 0
+	function end_donate = 7
+	function goal = 10
 	
-	function old_balance ($u in User) = 0
-	function old_bid = 0
-	function old_frontrunner = user
+	function donors ($u in User) = 0
+	
+	function block_number = 0
 		
 
 	
