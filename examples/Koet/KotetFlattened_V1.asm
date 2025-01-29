@@ -230,7 +230,7 @@ definitions:
 	 invariant over king : (current_layer = 0 and not exception and executing_contract(1) = kotET) implies (old_king != king)
 	 
 	 // non è possibile che il balance del contratto arrivi a 0
-	 invariant over balance : balance(kotET) > 0
+	 invariant over balance : (not exception) implies balance(kotET) > 0
 	 	 
 	 // claim price non può essere maggiore di tutti i balance degli utenti
 	 invariant over claim_price : not (forall $u in User with balance($u) < claim_price )
@@ -287,6 +287,7 @@ default init s0:
 	 
 	function king = initial_king 
 	function claim_price = 1
+	function old_claim_price = 0
 		
 
 	

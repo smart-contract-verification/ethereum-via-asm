@@ -43,7 +43,6 @@ signature:
 	/* METHOD ATTRIBUTE */
 	dynamic controlled payable : Function -> Boolean
 	
-	
 	/* FUNCTIONS THAT ALLOW TRANSACTIONS */
 	dynamic controlled sender : StackLayer -> User 
 	dynamic controlled amount : StackLayer -> MoneyAmount
@@ -60,6 +59,7 @@ signature:
 	dynamic controlled boolean_return : Boolean
 	
 	/* GENERAL MONITORED FUNCTION */
+	controlled random_sender : Integer -> User
 	controlled random_receiver : Integer -> User
 	controlled random_function : Integer -> Function
 	controlled random_amount : Integer -> MoneyAmount
@@ -75,6 +75,7 @@ signature:
 	static none : Function
 	
 	static user : User
+	static user2 : User
 
 	
 	
@@ -122,6 +123,7 @@ definitions:
 	function is_contract ($u in User) =
 		switch $u 
 			case user : false
+			
 			otherwise true
 		endswitch
 		
@@ -204,11 +206,7 @@ definitions:
 		if executing_function(current_layer) = destroy then
 			switch instruction_pointer(current_layer)
 				case 0 : 
-					if sender(current_layer) = owner then
-						r_Selfdestruct[owner]
-					else
-						r_Ret[]
-					endif
+					r_Selfdestruct[owner]
 			endswitch
 		endif
 		
@@ -273,7 +271,7 @@ definitions:
 	 */
 
 	// la funzione destroy può venir chiamata solamente dall'owner del contratto
-	invariant over sender : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = destroy and not exception) implies (sender(1) = owner)
+	invariant over sender : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = destroy and not exception and destroyed(auction)) implies (sender(1) = owner)
 	
 	// se viene fatta una chiamata alla funzione bid ed esiste già un current_frontrunner, a questo vengono ritornati i soldi precedentemente versati
 	invariant over balance : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = bid and old_frontrunner != undef_user and not exception and old_frontrunner = user and sender(1) = user) implies (old_balance(user) + old_bid = balance(user))
@@ -292,16 +290,22 @@ definitions:
 		par
 			if current_layer = 0 then
 				if not exception then
-					let ($r = random_receiver(stage)) in
-						let ($n = random_amount(stage)) in 
-							let ($f = random_function(stage)) in
-								par
-									r_Transaction[user, $r, $n, $f]
-									old_bid := currentBid
-									old_frontrunner := currentFrontrunner
-									forall $u in User with true do
-										old_balance($u) := balance($u)
-								endpar
+					let ($s = random_sender(stage)) in
+						let ($r = random_receiver(stage)) in
+							let ($n = random_amount(stage)) in 
+								let ($f = random_function(stage)) in
+									if (not is_contract($s)) then
+										par
+											r_Transaction[$s, $r, $n, $f]
+											old_bid := currentBid
+											old_frontrunner := currentFrontrunner
+											forall $u in User with true do
+												old_balance($u) := balance($u)
+										endpar
+									else 
+										exception := true
+									endif
+								endlet
 							endlet
 						endlet
 					endlet
@@ -349,7 +353,7 @@ default init s0:
 	 * MODEL FUNCTION INITIALIZATION
 	 */
 	function currentFrontrunner = undef_user
-	function owner = user
+	function owner = user2
 	function currentBid = 0
 	
 		

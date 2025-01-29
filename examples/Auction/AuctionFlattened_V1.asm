@@ -74,6 +74,7 @@ signature:
 	static none : Function
 	
 	static user : User
+	static user2 : User
 
 	
 	
@@ -202,11 +203,7 @@ definitions:
 		if executing_function(current_layer) = destroy then
 			switch instruction_pointer(current_layer)
 				case 0 : 
-					if sender(current_layer) = owner then
-						r_Selfdestruct[owner]
-					else
-						r_Ret[]
-					endif
+					r_Selfdestruct[owner]
 			endswitch
 		endif
 		
@@ -289,14 +286,18 @@ definitions:
 	main rule r_Main = 
 		if current_layer = 0 then
 			if not exception then
-				let ($r = random_receiver, $n = random_amount, $f = random_function) in
-					par
-						r_Transaction[user, $r, $n, $f]
-						old_bid := currentBid
-						old_frontrunner := currentFrontrunner
-						forall $u in User with true do
-							old_balance($u) := balance($u)
-					endpar
+				let ($s = random_sender, $r = random_receiver, $n = random_amount, $f = random_function) in
+					if not is_contract($s) then
+						par
+							r_Transaction[$s, $r, $n, $f]
+							old_bid := currentBid
+							old_frontrunner := currentFrontrunner
+							forall $u in User with true do
+								old_balance($u) := balance($u)
+						endpar
+					else 
+						exception := true
+					endif
 				endlet
 			endif
 		else
@@ -337,7 +338,7 @@ default init s0:
 	/*
 	 * MODEL FUNCTION INITIALIZATION
 	 */
-	function owner = user
+	function owner = user2
 	function currentBid = 0
 	
 	function old_balance ($u in User) = 0

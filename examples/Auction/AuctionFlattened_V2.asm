@@ -204,7 +204,11 @@ definitions:
 		if executing_function(current_layer) = destroy then
 			switch instruction_pointer(current_layer)
 				case 0 : 
+				if sender(current_layer) = owner then
 					r_Selfdestruct[owner]
+				else
+					r_Require[]
+				endif
 			endswitch
 		endif
 		

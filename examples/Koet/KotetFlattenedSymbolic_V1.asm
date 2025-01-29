@@ -36,7 +36,7 @@ signature:
 	/* --------------------------------------------LIBRARY MODEL FUNCTIONS-------------------------------------------- */
 	
 	/* USER ATTRIBUTES */
-	dynamic controlled balance : User -> Integer 
+	dynamic controlled balance : User -> MoneyAmount 
 	dynamic controlled destroyed : User -> Boolean
 	static is_contract : User -> Boolean
 	
@@ -45,16 +45,16 @@ signature:
 	
 	
 	/* FUNCTIONS THAT ALLOW TRANSACTIONS */
-	dynamic controlled sender : Integer -> User 
-	dynamic controlled amount : Integer -> Integer
+	dynamic controlled sender : StackLayer -> User 
+	dynamic controlled amount : StackLayer -> MoneyAmount
 	
 	/* STACK MANAGEMENT */
-	dynamic controlled current_layer : Integer
+	dynamic controlled current_layer : StackLayer
 	
 	/* ALLOW FUNCTION EXECUTIONS */
-	dynamic controlled executing_function : Integer -> Function
-	dynamic controlled instruction_pointer : Integer -> Integer
-	dynamic controlled executing_contract : Integer -> User
+	dynamic controlled executing_function : StackLayer -> Function
+	dynamic controlled instruction_pointer : StackLayer -> InstructionPointer
+	dynamic controlled executing_contract : StackLayer -> User
 	
 	/* RETURN VALUES */
 	dynamic controlled boolean_return : Boolean
@@ -63,7 +63,7 @@ signature:
 	controlled random_sender : Integer -> User
 	controlled random_receiver : Integer -> User
 	controlled random_function : Integer -> Function
-	controlled random_amount : Integer -> Integer
+	controlled random_amount : Integer -> MoneyAmount
 	
 	/* EXCEPTION */
 	dynamic controlled exception : Boolean
@@ -86,10 +86,10 @@ signature:
 	/* --------------------------------------------CONTRACT MODEL FUNCTIONS-------------------------------------------- */
 
 	dynamic controlled king : User
-	dynamic controlled claim_price : Integer
+	dynamic controlled claim_price : MoneyAmount
 	
 	dynamic controlled old_king : User
-	dynamic controlled old_claim_price  : Integer
+	dynamic controlled old_claim_price  : MoneyAmount
 	
 	static kotET : User
 	static initial_king : User
@@ -232,7 +232,7 @@ definitions:
 	 invariant over king : (current_layer = 0 and not exception and executing_contract(1) = kotET) implies (old_king != king)
 	 
 	 // non è possibile che il balance del contratto arrivi a 0
-	 invariant over balance : balance(kotET) > 0
+	 invariant over balance : (not exception) implies balance(kotET) > 0
 	 	 
 	 // claim price non può essere maggiore di tutti i balance degli utenti
 	 invariant over claim_price : not (forall $u in User with balance($u) < claim_price )
@@ -280,9 +280,9 @@ default init s0:
 	/*
 	 * LIBRARY FUNCTION INITIZLIZATIONS
 	 */
-	function executing_function ($sl in Integer) = none
-	function executing_contract ($cl in Integer) = user
-	function instruction_pointer ($sl in Integer) = 0
+	function executing_function ($sl in StackLayer) = none
+	function executing_contract ($cl in StackLayer) = user
+	function instruction_pointer ($sl in StackLayer) = 0
 	function current_layer = 0
 	function balance($c in User) = 3
 	function destroyed($u in User) = false

@@ -207,7 +207,11 @@ definitions:
 		if executing_function(current_layer) = destroy then
 			switch instruction_pointer(current_layer)
 				case 0 : 
-					r_Selfdestruct[owner]
+					if sender(current_layer) = owner then
+						r_Selfdestruct[owner]
+					else
+						r_Require[false]
+					endif
 			endswitch
 		endif
 		
@@ -272,7 +276,7 @@ definitions:
 	 */
 
 	// la funzione destroy può venir chiamata solamente dall'owner del contratto
-	invariant over sender : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = destroy and not exception) implies (sender(1) = owner)
+	invariant over sender : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = destroy and not exception and destroyed(auction)) implies (sender(1) = owner)
 	
 	// se viene fatta una chiamata alla funzione bid ed esiste già un current_frontrunner, a questo vengono ritornati i soldi precedentemente versati
 	invariant over balance : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = bid and old_frontrunner != undef_user and not exception and old_frontrunner = user and sender(1) = user) implies (old_balance(user) + old_bid = balance(user))
