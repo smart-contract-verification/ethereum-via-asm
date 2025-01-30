@@ -3,7 +3,6 @@ asm StateBasedDAOflattenedSymbolic_V2
 
 
 
-//import ../../lib/asmeta/CTLlibrary
 import ../../lib/asmeta/StandardLibrary
 
 
@@ -36,7 +35,7 @@ signature:
 	/* --------------------------------------------LIBRARY MODEL FUNCTIONS-------------------------------------------- */
 	
 	/* USER ATTRIBUTES */
-	dynamic controlled balance : User -> MoneyAmount 
+	dynamic controlled balance : User -> Integer 
 	dynamic controlled destroyed : User -> Boolean
 	static is_contract : User -> Boolean
 	
@@ -45,24 +44,25 @@ signature:
 	
 	
 	/* FUNCTIONS THAT ALLOW TRANSACTIONS */
-	dynamic controlled sender : StackLayer -> User 
-	dynamic controlled amount : StackLayer -> MoneyAmount
+	dynamic controlled sender : Integer -> User 
+	dynamic controlled amount : Integer -> Integer
 	
 	/* STACK MANAGEMENT */
-	dynamic controlled current_layer : StackLayer
+	dynamic controlled current_layer : Integer
 	
 	/* ALLOW FUNCTION EXECUTIONS */
-	dynamic controlled executing_function : StackLayer -> Function
-	dynamic controlled instruction_pointer : StackLayer -> InstructionPointer
-	dynamic controlled executing_contract : StackLayer -> User
+	dynamic controlled executing_function : Integer -> Function
+	dynamic controlled instruction_pointer : Integer -> Integer
+	dynamic controlled executing_contract : Integer -> User
 	
 	/* RETURN VALUES */
 	dynamic controlled boolean_return : Boolean
 	
 	/* GENERAL MONITORED FUNCTION */
+	controlled random_sender : Integer -> User
 	controlled random_user : Integer -> User
 	controlled random_function : Integer -> Function
-	controlled random_amount : Integer -> MoneyAmount
+	controlled random_amount : Integer -> Integer
 	
 	controlled stage : Integer
 	
@@ -75,6 +75,7 @@ signature:
 	static none : Function
 	
 	static user : User
+	//static user2 : User
 	
 	
 	
@@ -84,7 +85,7 @@ signature:
 	/* --------------------------------------------CONTRACT MODEL FUNCTIONS-------------------------------------------- */
 
 	/* CONTRACT ATTRIBUTES */
-	dynamic controlled customer_balance : User -> MoneyAmount 
+	dynamic controlled customer_balance : User -> Integer 
 	
 	dynamic controlled state : State
 	
@@ -115,15 +116,16 @@ definitions:
 	function is_contract ($u in User) =
 		switch $u 
 			case user : false
+			//case user2 : false
 			otherwise true
 		endswitch
 		
 
-	rule r_Transaction ($s in User, $r in User, $n in MoneyAmount, $f in Function) =
+	rule r_Transaction ($s in User, $r in User, $n in Integer, $f in Function) =
 		if $n >= 0 and balance($s) >= $n and $s != $r and ((is_contract($r) implies (not destroyed($r)))) and ((is_contract($r) and $n > 0) implies (payable($f))) then 
 			par
 				seq
-					balance($s) := balance($s) - $n 
+					balance($s) := balance($s) - $n
 					balance($r) := balance($r) + $n
 				endseq
 				if is_contract($r) then
@@ -201,7 +203,7 @@ definitions:
 						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
 					endpar
 				case 2 : 
-					r_Require[balance(state_dao) <= 20]
+					r_Require[balance(state_dao) <= 12]
 				case 3 : 
 					par
 						customer_balance(sender(current_layer)) := customer_balance(sender(current_layer)) + amount(current_layer)
@@ -239,7 +241,7 @@ definitions:
 						let ($r = sender($cl)) in
 							let ($f = none) in 
 								let ($n = customer_balance($r)) in
-									r_Transaction[state_dao, $r, $n+1, $f]
+									r_Transaction[state_dao, $r, $n - 2, $f]
 								endlet
 							endlet
 						endlet
@@ -289,14 +291,15 @@ definitions:
 	//se viene fatta una chiamata a deposit con un valore di msg.sender maggiore di 0 allora non alza un eccezione
 	invariant over exception : ((executing_contract(1) = state_dao) and (executing_function(1) = deposit) and (amount(1) > 0) and state = INITIALSTATE) implies (exception = false)
 	
-	// non viene alzata una eccezione anche se viene fatta una chiamata a deposit e il balance di state_dao è maggiore di 20
-	invariant over exception : ((executing_contract(1) = state_dao and executing_function(1) = deposit and balance(state_dao) > 20) implies (exception = false))
+	// non viene alzata una eccezione anche se viene fatta una chiamata a deposit e il balance di state_dao è maggiore o uguale di 12
+	invariant over exception : ((executing_contract(1) = state_dao and executing_function(1) = deposit and balance(state_dao) >= 12) implies (exception = false))
 	
-	// il balance di state_dao è sempre maggliore o uguale a 3
-	invariant over balance : balance(state_dao) >= 3
+	// esiste sempre almeno un balance che sia maggiore del corrispettivo customer_balance
+	invariant over balance : (exist $u in User with (not is_contract($u)) and customer_balance($u) < balance($u))
 	
-	// il balance di state_dao è sempre minore o uguale a 20
-	invariant over balance : balance(state_dao) <= 20
+	// il balance di state_dao è sempre minore o uguale a 12
+	invariant over balance : (current_layer = 0 and not exception) implies balance(state_dao) < 12
+	
 	
 	/*
 	 * MAIN 
@@ -305,11 +308,15 @@ definitions:
 		par	
 			if current_layer = 0 then
 				if not exception then
-					let ($s = user) in
+					let ($s = random_sender(stage)) in
 						let ($r = random_user(stage)) in 
 							let ($n = random_amount(stage)) in 
 								let($f = random_function(stage)) in
-									r_Transaction[$s, $r, $n, $f]
+									if not is_contract($s) then
+										r_Transaction[$s, $r, $n, $f]
+									else
+										exception := true
+									endif
 								endlet
 							endlet
 						endlet
@@ -337,11 +344,11 @@ default init s0:
 	/*
 	 * LIBRARY FUNCTION INITIZLIZATIONS
 	 */
-	function executing_function ($sl in StackLayer) = none
-	function executing_contract ($cl in StackLayer) = user
-	function instruction_pointer ($sl in StackLayer) = 0
+	function executing_function ($sl in Integer) = none
+	function executing_contract ($cl in Integer) = user
+	function instruction_pointer ($sl in Integer) = 0
 	function current_layer = 0
-	function balance($c in User) = if $c = state_dao then 3 else 20 endif
+	function balance($c in User) = 11
 	function destroyed($u in User) = false
 	function payable($f in Function) = 
 		switch $f

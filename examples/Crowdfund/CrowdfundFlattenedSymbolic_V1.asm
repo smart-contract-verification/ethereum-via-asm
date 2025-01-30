@@ -36,7 +36,7 @@ signature:
 	/* --------------------------------------------LIBRARY MODEL FUNCTIONS-------------------------------------------- */
 	
 	/* USER ATTRIBUTES */
-	dynamic controlled balance : User -> MoneyAmount 
+	dynamic controlled balance : User -> Integer 
 	dynamic controlled destroyed : User -> Boolean
 	static is_contract : User -> Boolean
 	
@@ -45,16 +45,16 @@ signature:
 	
 	
 	/* FUNCTIONS THAT ALLOW TRANSACTIONS */
-	dynamic controlled sender : StackLayer -> User 
-	dynamic controlled amount : StackLayer -> MoneyAmount
+	dynamic controlled sender : Integer -> User 
+	dynamic controlled amount : Integer -> Integer
 	
 	/* STACK MANAGEMENT */
-	dynamic controlled current_layer : StackLayer
+	dynamic controlled current_layer : Integer
 	
 	/* ALLOW FUNCTION EXECUTIONS */
-	dynamic controlled executing_function : StackLayer -> Function
-	dynamic controlled instruction_pointer : StackLayer -> InstructionPointer
-	dynamic controlled executing_contract : StackLayer -> User
+	dynamic controlled executing_function : Integer -> Function
+	dynamic controlled instruction_pointer : Integer -> Integer
+	dynamic controlled executing_contract : Integer -> User
 	
 	/* RETURN VALUES */
 	dynamic controlled boolean_return : Boolean
@@ -63,7 +63,7 @@ signature:
 	controlled random_sender : Integer -> User
 	controlled random_receiver : Integer -> User
 	controlled random_function : Integer -> Function
-	controlled random_amount : Integer -> MoneyAmount
+	controlled random_amount : Integer -> Integer
 	
 	/* EXCEPTION */
 	dynamic controlled exception : Boolean
@@ -76,7 +76,7 @@ signature:
 	static none : Function
 	
 	static user : User
-	//static user2 : User
+	static user2 : User
 	
 	
 	
@@ -85,18 +85,18 @@ signature:
 	
 	/* --------------------------------------------CONTRACT MODEL FUNCTIONS-------------------------------------------- */
 
-	dynamic controlled end_donate : GeneralInteger
-	dynamic controlled goal : MoneyAmount
+	dynamic controlled end_donate : Integer
+	dynamic controlled goal : Integer
 	dynamic controlled owner : User
-	dynamic controlled donors : User -> MoneyAmount
+	dynamic controlled donors : User -> Integer
 	
-	dynamic controlled local_amount : StackLayer -> MoneyAmount
+	dynamic controlled local_amount : Integer -> Integer
 	
 	
-	dynamic controlled block_number : GeneralInteger
+	dynamic controlled block_number : Integer
 	
-	dynamic controlled old_balance : User -> MoneyAmount
-	dynamic controlled old_donors : User -> MoneyAmount
+	dynamic controlled old_balance : User -> Integer
+	dynamic controlled old_donors : User -> Integer
 	
 	
 	static crowdfund : User
@@ -126,7 +126,7 @@ definitions:
 	function is_contract ($u in User) =
 		switch $u 
 			case user : false
-			//case user2 : false
+			case user2 : false
 			otherwise true
 		endswitch
 		
@@ -138,7 +138,7 @@ definitions:
 		current_layer := current_layer - 1 
 		
 		
-	rule r_Transaction ($s in User, $r in User, $n in MoneyAmount, $f in Function) =
+	rule r_Transaction ($s in User, $r in User, $n in Integer, $f in Function) =
 		if $n >= 0 and balance($s) >= $n and $s != $r and ((is_contract($r) implies (not destroyed($r)))) and ((is_contract($r) and $n > 0) implies (payable($f))) then 
 			par
 				seq
@@ -231,15 +231,13 @@ definitions:
 					r_Require[block_number >= end_donate]
 				case 1 : 
 					r_Require[balance(crowdfund) >= goal]
-				case 2 :
-					r_Require[sender(current_layer) = owner]
-				case 3 : 
+				case 2 : 
 					let ($cl = current_layer) in
 						r_Transaction[crowdfund, sender($cl), balance(crowdfund), none]
 					endlet
-				case 4 : 
+				case 3 : 
 					r_Require[exception]
-				case 5 :
+				case 4 :
 					r_Ret[]
 			endswitch
 		endif
@@ -324,18 +322,24 @@ definitions:
 		par
 			if current_layer = 0 then
 				if not exception then
-					let ($r = random_receiver(stage)) in
-						let ($n = random_amount(stage)) in 
-							let ($f = random_function(stage)) in
-								par
-									block_number := block_number + 1
-									r_Transaction[user, $r, $n, $f]
-									forall $u in User with true do
+					let ($s = user) in
+						let ($r = random_receiver(stage)) in
+							let ($n = random_amount(stage)) in 
+								let ($f = random_function(stage)) in
+									if not is_contract($s) then
 										par
-											old_balance($u) := balance($u)
-											old_donors($u) := donors($u)
+											block_number := block_number + 1
+											r_Transaction[$s, $r, $n, $f]
+											forall $u in User with true do
+												par
+													old_balance($u) := balance($u)
+													old_donors($u) := donors($u)
+												endpar
 										endpar
-								endpar
+									else 
+										exception := false
+									endif
+								endlet
 							endlet
 						endlet
 					endlet
@@ -363,9 +367,9 @@ default init s0:
 	/*
 	 * LIBRARY FUNCTION INITIZLIZATIONS
 	 */
-	function executing_function ($sl in StackLayer) = none
-	function executing_contract ($cl in StackLayer) = user
-	function instruction_pointer ($sl in StackLayer) = 0
+	function executing_function ($sl in Integer) = none
+	function executing_contract ($cl in Integer) = user
+	function instruction_pointer ($sl in Integer) = 0
 	function current_layer = 0
 	//function balance($c in User) = 3
 	function destroyed($u in User) = false
@@ -384,8 +388,8 @@ default init s0:
 	/*
 	 * MODEL FUNCTION INITIALIZATION
 	 */
-	function owner = user
-	function end_donate = 7
+	function owner = user2
+	function end_donate = 2
 	function goal = 10
 	
 	function donors ($u in User) = 0

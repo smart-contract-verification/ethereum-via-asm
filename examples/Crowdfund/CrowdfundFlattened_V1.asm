@@ -74,6 +74,7 @@ signature:
 	static none : Function
 	
 	static user : User
+	static user2 : User
 
 	
 	
@@ -124,6 +125,7 @@ definitions:
 	function is_contract ($u in User) =
 		switch $u 
 			case user : false
+			case user2 : false
 			otherwise true
 		endswitch
 		
@@ -228,15 +230,13 @@ definitions:
 					r_Require[block_number >= end_donate]
 				case 1 : 
 					r_Require[balance(crowdfund) >= goal]
-				case 2 :
-					r_Require[sender(current_layer) = owner]
-				case 3 : 
+				case 2 : 
 					let ($s = crowdfund, $r = sender(current_layer), $n = balance(crowdfund), $f = none) in
 						r_Transaction[$s, $r, $n, $f]
 					endlet
-				case 4 : 
+				case 3 : 
 					r_Require[exception]
-				case 5 :
+				case 4 :
 					r_Ret[]
 			endswitch
 		endif
@@ -321,16 +321,18 @@ definitions:
 	main rule r_Main = 
 		if current_layer = 0 then
 			if not exception then
-				let ($r = random_receiver, $n = random_amount, $f = random_function) in
-					par
-						block_number := block_number + 1
-						r_Transaction[user, $r, $n, $f]
-						forall $u in User with true do
-							par
-								old_balance($u) := balance($u)
-								old_donors($u) := donors($u)
-							endpar
-					endpar
+				let ($s = random_sender, $r = random_receiver, $n = random_amount, $f = random_function) in
+					if not is_contract($s) then
+						par
+							block_number := block_number + 1
+							r_Transaction[$s, $r, $n, $f]
+							forall $u in User with true do
+								par
+									old_balance($u) := balance($u)
+									old_donors($u) := donors($u)
+								endpar
+						endpar
+					endif
 				endlet
 			endif
 		else

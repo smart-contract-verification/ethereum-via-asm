@@ -1,4 +1,4 @@
-asm StateBasedDAOflattenedSymbolic_V1
+asm AirdropFlattenedSymbolic_V2
 
 
 
@@ -64,18 +64,17 @@ signature:
 	controlled random_function : Integer -> Function
 	controlled random_amount : Integer -> Integer
 	
-	controlled stage : Integer
-	
 	/* EXCEPTION */
 	dynamic controlled exception : Boolean
 	
+	dynamic controlled stage : Integer
 	
 	
 	/* ABSTRACT DOMAIN DEFINITION FOR EVM */
 	static none : Function
 	
 	static user : User
-	//static user2 : User
+	static user2 : User
 	
 	
 	
@@ -84,17 +83,17 @@ signature:
 	
 	/* --------------------------------------------CONTRACT MODEL FUNCTIONS-------------------------------------------- */
 
-	/* CONTRACT ATTRIBUTES */
-	dynamic controlled customer_balance : User -> Integer 
+	dynamic controlled user_balance : User -> Integer 
+	dynamic controlled received_airdrop : User -> Boolean
+	dynamic controlled old_received_airdrop : User -> Boolean
 	
-	dynamic controlled state : State
-	
+	dynamic controlled airdrop_amount : Integer
 	
 	/* METHODS DEFINITIONS AND USER DEFINITIONS */
-	static state_dao : User
+	static airdrop : User
 	
-	static deposit : Function
-	static withdraw : Function 
+	static receive_airdrop : Function
+	static can_receive_airdrop : Function
 	
 	
 
@@ -107,7 +106,7 @@ definitions:
 
 
 	/* DOMAIN AND FUNCTION DEFINITION */
-	domain MoneyAmount = {-1 : 5}
+	domain MoneyAmount = {-1 : 7}
 	domain StackLayer = {0 : 2}
 	domain InstructionPointer = {0 : 7}
 	
@@ -116,16 +115,23 @@ definitions:
 	function is_contract ($u in User) =
 		switch $u 
 			case user : false
-			//case user2 : false
+			case user2 : false
 			otherwise true
 		endswitch
 		
 
+	/* 
+	 * RETURN RULE
+	 */
+	macro rule r_Ret =
+		current_layer := current_layer - 1 
+		
+		
 	rule r_Transaction ($s in User, $r in User, $n in Integer, $f in Function) =
 		if $n >= 0 and balance($s) >= $n and $s != $r and ((is_contract($r) implies (not destroyed($r)))) and ((is_contract($r) and $n > 0) implies (payable($f))) then 
 			par
 				seq
-					balance($s) := balance($s) - $n
+					balance($s) := balance($s) - $n 
 					balance($r) := balance($r) + $n
 				endseq
 				if is_contract($r) then
@@ -152,11 +158,7 @@ definitions:
 			endpar
 		endif
 		
-	/* 
-	 * RETURN RULE
-	 */
-	macro rule r_Ret =
-		current_layer := current_layer - 1 
+
 		
 	/*
 	 * REQUIRE RULE
@@ -188,86 +190,41 @@ definitions:
 	
 	/* --------------------------------------------CONTRACT MODEL-------------------------------------------- */
 
-	/* 
+		/* 
 	 * DEPOSIT FUNCTION RULE
 	 */
 	 
-	rule r_Deposit =
-		if executing_function(current_layer) = deposit then 
-			switch instruction_pointer(current_layer)
-				case 0 : 
-					r_Require[state = INITIALSTATE]
-				case 1 : 
-					par 
-						state := INTRANSITION
-						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
-					endpar
-				case 2 : 
-					r_Require[balance(state_dao) <= 12]
-				case 3 : 
-					par
-						customer_balance(sender(current_layer)) := customer_balance(sender(current_layer)) + amount(current_layer)
-						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
-					endpar
-				case 4 : 
-					par
-						state := INITIALSTATE
-						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
-					endpar
-				case 5 : 
-					r_Ret[]
-			endswitch
-		endif
-		
-		
-	/* 
-	 * WITHDARW FUNCTION RULE
-	 */
-	 
-	rule r_Withdraw = 
-		if executing_function(current_layer) = withdraw then
-			switch instruction_pointer(current_layer)
-				case 0 : 
-					r_Require[state = INITIALSTATE]
-				case 1 : 
-					par 
-						state := INTRANSITION
-						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
-					endpar
-				case 2 : 
-					r_Require[customer_balance(sender(current_layer)) > 0]
-				case 3 : 
-					let ($cl = current_layer) in
-						let ($r = sender($cl)) in
-							let ($f = none) in 
-								let ($n = customer_balance($r)) in
-									r_Transaction[state_dao, $r, $n - 2, $f]
-								endlet
-							endlet
-						endlet
-					endlet
-				case 4 :
-					if not exception then
-						par
-							customer_balance(sender(current_layer)) := 0
+	rule r_Receive_airdrop =
+		let ($cl = current_layer) in
+			let ($scl = sender($cl)) in
+				if executing_function($cl) = receive_airdrop then 
+					switch instruction_pointer($cl)
+						case 0 : 
+							r_Require[not received_airdrop(sender($cl))]
+						case 1 : 
+							r_Transaction[airdrop, sender($cl), 1, can_receive_airdrop]
+						case 2 : 
+							par
+								user_balance(sender($cl)) := user_balance(sender($cl)) + airdrop_amount
+								received_airdrop(sender($cl)) := true
+								instruction_pointer($cl) := instruction_pointer($cl) + 1
+							endpar
+						case 3 : 
 							r_Ret[]
-						endpar
-					else 
-						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
-					endif
-				case 5 : 
-					par
-						state := INITIALSTATE
-						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
-					endpar
-				case 6 :
-					r_Ret[]
-			endswitch
-		endif
+					endswitch
+				endif
+			endlet
+		endlet
+	
+	
+	
+	/* 
+	 * FALLBACK FUNCTION RULE
+	 */ 
 	
 	
 	rule r_Fallback =
-		if executing_function(current_layer) != deposit and  executing_function(current_layer) != withdraw then 
+		if executing_function(current_layer) != receive_airdrop then 
 			switch instruction_pointer(current_layer)
 				case 0 : 
 					 r_Require[false]
@@ -284,27 +241,21 @@ definitions:
 	/*
 	 * INVARIANT
 	 */
-	 
-	// if there was no exception and the contract is not running, the contract's state is INITIALSTATE
-	invariant over state : ((current_layer = 0 and not exception) implies (state = INITIALSTATE))
 	
-	//se viene fatta una chiamata a deposit con un valore di msg.sender maggiore di 0 allora non alza un eccezione
-	invariant over exception : ((executing_contract(1) = state_dao) and (executing_function(1) = deposit) and (amount(1) > 0) and state = INITIALSTATE) implies (exception = false)
+	// anche se viene fatta una chiamata a receive_airdrop e non sono state alzate eccezioni, il valore per msg.sender di received_airdrop rimane false
+	invariant over received_airdrop : (current_layer = 0 and executing_contract(1) = airdrop and executing_function(1) = receive_airdrop and not exception and sender(1) = user)implies(not received_airdrop(user))
 	
-	// non viene alzata una eccezione anche se viene fatta una chiamata a deposit e il balance di state_dao è maggiore di 12
-	invariant over exception : ((executing_contract(1) = state_dao and executing_function(1) = deposit and balance(state_dao) >= 12) implies (exception = false))
+	// se viene fatta una chiamata a receive_airdrop da un account con received_airdrop a 0, non viene sollevata un eccezione
+	invariant over exception : (current_layer = 0 and executing_contract(1) = airdrop and executing_function(1) = receive_airdrop and sender(1) = user and not old_received_airdrop(user)) implies (not exception)
 	
-	// esiste sempre almeno un balance che sia maggiore del corrispettivo customer_balance
-	invariant over balance : (exist $u in User with (not is_contract($u)) and customer_balance($u) < balance($u))
-	
-	// il balance di state_dao è sempre minore o uguale a 12
-	invariant over balance : (current_layer = 0 and not exception) implies balance(state_dao) < 12
-	
+	// non tutti gli utenti hanno ricevuto l'airdrop
+	invariant over user_balance : not (forall $u in User with (not is_contract($u)) implies received_airdrop($u))
+		
 	/*
 	 * MAIN 
 	 */ 
 	main rule r_Main = 
-		par	
+		par
 			if current_layer = 0 then
 				if not exception then
 					let ($s = random_sender(stage)) in
@@ -312,7 +263,11 @@ definitions:
 							let ($n = random_amount(stage)) in 
 								let($f = random_function(stage)) in
 									if not is_contract($s) then
-										r_Transaction[$s, $r, $n, $f]
+										par
+											r_Transaction[$s, $r, $n, $f]
+											forall $u in User with true do
+												old_received_airdrop($u) := received_airdrop($u)
+										endpar
 									else
 										exception := true
 									endif
@@ -322,10 +277,9 @@ definitions:
 					endlet
 				endif
 			else
-				if executing_contract(current_layer) = state_dao then
+				if executing_contract(current_layer) = airdrop then
 					par 
-						r_Deposit[]
-						r_Withdraw[]
+						r_Receive_airdrop[]
 						r_Fallback[]
 					endpar
 				endif
@@ -347,12 +301,11 @@ default init s0:
 	function executing_contract ($cl in Integer) = user
 	function instruction_pointer ($sl in Integer) = 0
 	function current_layer = 0
-	function balance($c in User) = 10
+	//function balance($c in User) = 3
 	function destroyed($u in User) = false
 	function payable($f in Function) = 
 		switch $f
-			case deposit : true
-			case withdraw : false
+			case receive_airdrop : false
 			case none : true
 			otherwise false
 		endswitch
@@ -364,8 +317,9 @@ default init s0:
 	/*
 	 * MODEL FUNCTION INITIALIZATION
 	 */
-	function customer_balance($c in User) = 0
-	function state = INITIALSTATE
+	function user_balance($c in User) = 0
+	function received_airdrop($u in User) = false
+	function airdrop_amount = 1
 		
 
 	

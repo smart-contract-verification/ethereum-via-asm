@@ -1,4 +1,4 @@
-asm AirdropFlattenedSymbolic
+asm AirdropFlattenedSymbolic_V1
 
 
 
@@ -35,7 +35,7 @@ signature:
 	/* --------------------------------------------LIBRARY MODEL FUNCTIONS-------------------------------------------- */
 	
 	/* USER ATTRIBUTES */
-	dynamic controlled balance : User -> MoneyAmount 
+	dynamic controlled balance : User -> Integer 
 	dynamic controlled destroyed : User -> Boolean
 	static is_contract : User -> Boolean
 	
@@ -44,16 +44,16 @@ signature:
 	
 	
 	/* FUNCTIONS THAT ALLOW TRANSACTIONS */
-	dynamic controlled sender : StackLayer -> User 
-	dynamic controlled amount : StackLayer -> MoneyAmount
+	dynamic controlled sender : Integer -> User 
+	dynamic controlled amount : Integer -> Integer
 	
 	/* STACK MANAGEMENT */
-	dynamic controlled current_layer : StackLayer
+	dynamic controlled current_layer : Integer
 	
 	/* ALLOW FUNCTION EXECUTIONS */
-	dynamic controlled executing_function : StackLayer -> Function
-	dynamic controlled instruction_pointer : StackLayer -> InstructionPointer
-	dynamic controlled executing_contract : StackLayer -> User
+	dynamic controlled executing_function : Integer -> Function
+	dynamic controlled instruction_pointer : Integer -> Integer
+	dynamic controlled executing_contract : Integer -> User
 	
 	/* RETURN VALUES */
 	dynamic controlled boolean_return : Boolean
@@ -61,7 +61,7 @@ signature:
 	/* GENERAL MONITORED FUNCTION */
 	controlled random_user : Integer -> User
 	controlled random_function : Integer -> Function
-	controlled random_amount : Integer -> MoneyAmount
+	controlled random_amount : Integer -> Integer
 	
 	/* EXCEPTION */
 	dynamic controlled exception : Boolean
@@ -81,11 +81,11 @@ signature:
 	
 	/* --------------------------------------------CONTRACT MODEL FUNCTIONS-------------------------------------------- */
 
-	dynamic controlled user_balance : User -> MoneyAmount 
+	dynamic controlled user_balance : User -> Integer 
 	dynamic controlled received_airdrop : User -> Boolean
 	dynamic controlled old_received_airdrop : User -> Boolean
 	
-	dynamic controlled airdrop_amount : MoneyAmount
+	dynamic controlled airdrop_amount : Integer
 	
 	/* METHODS DEFINITIONS AND USER DEFINITIONS */
 	static airdrop : User
@@ -124,7 +124,7 @@ definitions:
 		current_layer := current_layer - 1 
 		
 		
-	rule r_Transaction ($s in User, $r in User, $n in MoneyAmount, $f in Function) =
+	rule r_Transaction ($s in User, $r in User, $n in Integer, $f in Function) =
 		if $n >= 0 and balance($s) >= $n and $s != $r and ((is_contract($r) implies (not destroyed($r)))) and ((is_contract($r) and $n > 0) implies (payable($f))) then 
 			par
 				seq
@@ -239,14 +239,14 @@ definitions:
 	 * INVARIANT
 	 */
 	
-	// se viene fatta una chiamata a receive_airdrop e non sono state alzate eccezioni allora il valore per msg.sender di received_airdrop è true
-	invariant over received_airdrop : (current_layer = 0 and executing_contract(1) = airdrop and executing_function(1) = receive_airdrop and not exception and sender(1) = user)implies(received_airdrop(user))
+	// se viene fatta una chiamata a receive_airdrop e non sono state alzate eccezioni, il valore per msg.sender di received_airdrop rimane true
+	invariant over received_airdrop : (current_layer = 0 and executing_contract(1) = airdrop and executing_function(1) = receive_airdrop and not exception and sender(1) = user)implies(not received_airdrop(user))
 	
 	// se viene fatta una chiamata a receive_airdrop da un account con received_airdrop a 0, non viene sollevata un eccezione
 	invariant over exception : (current_layer = 0 and executing_contract(1) = airdrop and executing_function(1) = receive_airdrop and sender(1) = user and not old_received_airdrop(user)) implies (not exception)
 	
-	// il valore di user_balance deve essere sempre minore o uguale ad airdrop_amount
-	invariant over user_balance : (current_layer = 0 and not exception) implies (forall $u in User with user_balance($u) <= airdrop_amount)
+	// è impossibile che tutti gli utenti che non siano contratti ricevano l'airdrop
+	invariant over user_balance : not (forall $u in User with (not is_contract($u)) implies received_airdrop($u))
 		
 	/*
 	 * MAIN 
@@ -290,9 +290,9 @@ default init s0:
 	/*
 	 * LIBRARY FUNCTION INITIZLIZATIONS
 	 */
-	function executing_function ($sl in StackLayer) = none
-	function executing_contract ($cl in StackLayer) = user
-	function instruction_pointer ($sl in StackLayer) = 0
+	function executing_function ($sl in Integer) = none
+	function executing_contract ($cl in Integer) = user
+	function instruction_pointer ($sl in Integer) = 0
 	function current_layer = 0
 	//function balance($c in User) = 3
 	function destroyed($u in User) = false
