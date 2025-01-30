@@ -115,7 +115,7 @@ definitions:
 
 
 	/* DOMAIN AND FUNCTION DEFINITION */
-	domain MoneyAmount = {-1 : 7}
+	domain MoneyAmount = {-1 : 20}
 	domain StackLayer = {0 : 2}
 	domain InstructionPointer = {0 : 7}
 	domain GeneralInteger = {-10 : 10}
@@ -235,7 +235,7 @@ definitions:
 						r_Transaction[$s, $r, $n, $f]
 					endlet
 				case 3 : 
-					r_Require[exception]
+					r_Require[not exception]
 				case 4 :
 					r_Ret[]
 			endswitch
@@ -300,28 +300,28 @@ definitions:
 	 * INVARIANT
 	 */
 
-	// se viene fatta una chiamata a donate, e non sono state sollevate eccezioni, allora donors(msg.sender) è maggiore di 0
-	invariant over donors : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = donate and sender(1) = user and not exception) implies (donors(user) > 0)
-	
-	// anche se viene fatta una chiamata a donate e la fase di donazione è finita, non viene sollevata un eccezione
-	invariant over exception : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = donate and block_number > end_donate) implies (not exception)
+//	// se viene fatta una chiamata a donate, e non sono state sollevate eccezioni, allora donors(msg.sender) è maggiore di 0
+//	invariant over donors : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = donate and sender(1) = user and not exception) implies (donors(user) > 0)
+//	
+//	// anche se viene fatta una chiamata a donate e la fase di donazione è finita, non viene sollevata un eccezione
+//	invariant over exception : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = donate and block_number > end_donate) implies (not exception)
 
 	// se viene completata una chiamata a withdraw senza che siano state alzate eccezioni, allora il sender era l'owner del contratto
 	invariant over owner : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = withdraw and not exception) implies (sender(1) = owner)
-	
-	// se viene fatta una chiamata a reclaim ma tutti i donors valgono 0 allora viene alzata un'eccezione 
-	invariant over exception : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = reclaim and not (exist $u in User with old_donors($u) > 0)) implies (exception)
-	
-	// se viene fatta una chiamta a reclaim da user, e il donors di user è maggiore di 0 allora dopo la chiamata donors vale 0
-	invariant over donors : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = reclaim and sender(1) = user and old_donors(user) > 0) implies (donors(user) = 0) 
-	
+//	
+//	// se viene fatta una chiamata a reclaim ma tutti i donors valgono 0 allora viene alzata un'eccezione 
+//	invariant over exception : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = reclaim and not (exist $u in User with old_donors($u) > 0)) implies (exception)
+//	
+//	// se viene fatta una chiamta a reclaim da user, e il donors di user è maggiore di 0 allora dopo la chiamata donors vale 0
+//	invariant over donors : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = reclaim and sender(1) = user and old_donors(user) > 0) implies (donors(user) = 0) 
+//	
 	/*
 	 * MAIN 
 	 */ 
 	main rule r_Main = 
 		if current_layer = 0 then
 			if not exception then
-				let ($s = random_sender, $r = random_receiver, $n = random_amount, $f = random_function) in
+				let ($s = user, $r = random_receiver, $n = random_amount, $f = random_function) in
 					if not is_contract($s) then
 						par
 							block_number := block_number + 1
@@ -360,7 +360,7 @@ default init s0:
 	function executing_contract ($cl in StackLayer) = user
 	function instruction_pointer ($sl in StackLayer) = 0
 	function current_layer = 0
-	function balance($c in User) = 3
+	function balance($c in User) = 10
 	function destroyed($u in User) = false
 	function payable($f in Function) = 
 		switch $f
@@ -376,8 +376,8 @@ default init s0:
 	/*
 	 * MODEL FUNCTION INITIALIZATION
 	 */
-	function owner = user
-	function end_donate = 7
+	function owner = user2
+	function end_donate = 2
 	function goal = 10
 	
 	function donors ($u in User) = 0

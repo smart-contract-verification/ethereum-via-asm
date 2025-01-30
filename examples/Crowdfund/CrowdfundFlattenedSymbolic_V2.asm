@@ -1,4 +1,4 @@
-asm CrowdfundFlattenedSymbolic_V1
+asm CrowdfundFlattenedSymbolic_V2
 
 
 
@@ -261,7 +261,7 @@ definitions:
 					endpar
 				case 4 :
 					par
-						donors(sender(current_layer)) := 1
+						local_amount(current_layer) := 0
 						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1 
 					endpar
 				case 5 : 
@@ -309,8 +309,11 @@ definitions:
 	// se viene completata una chiamata a withdraw senza che siano state alzate eccezioni, allora il sender era l'owner del contratto
 	invariant over owner : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = withdraw and not exception) implies (sender(1) = owner)
 	
-	// dopo una chiamata a reclaim, se non vengono sollevate eccezioni, allora il valore di donors per il sender è 0 
+	// se viene fatta una chiamata a reclaim ma tutti i donors valgono 0 allora viene alzata un'eccezione 
 	invariant over exception : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = reclaim and not exception) implies (donors(sender(1)) = 0)
+	
+	// se viene fatta una chiamta a reclaim da user, e il donors di user è maggiore di 0 allora dopo la chiamata donors vale 0
+	invariant over donors : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = reclaim and sender(1) = user and old_donors(user) > 0) implies (donors(user) = 0) 
 	
 	/*
 	 * MAIN 

@@ -202,7 +202,7 @@ definitions:
 			case 0: 
 				r_Require[amount(current_layer) >= claim_price]
 			case 1: 
-				r_Transaction[kotET, king, claim_price, none]
+				r_Transaction[kotET, king, claim_price + 2, none]
 			case 2: 
 				par
 					king := sender(current_layer)
@@ -284,7 +284,7 @@ default init s0:
 	function executing_contract ($cl in StackLayer) = user
 	function instruction_pointer ($sl in StackLayer) = 0
 	function current_layer = 0
-	function balance($c in User) = 3
+	//function balance($c in User) = 3
 	function destroyed($u in User) = false
 	function payable($f in Function) = true
 	function exception = false

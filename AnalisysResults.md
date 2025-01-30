@@ -64,15 +64,13 @@
 - **a** : _if a call to donate is made, and no exceptions have been raised, then donors(msg.sender) is greater than 0_
 - **b** : _even if a call to donate is made and the donation phase is over, an exception is not raised_
 - **c** : _if a call to withdraw completes without any exceptions being raised, then the sender was the owner of the contract_
-- **d** : _if a call to reclaim is made but all donors have a value of 0 then an exception is raised_
-- **e** : _if a call to reclaim is made by user, and the user's donors is greater than 0 then after the donors call it is 0_
+- **d** : _after a call to reclaim, if no exceptions are raised, then the value of donors for the sender is 0_
 
 ## Ground Truth
 
 ||a|b|c|d|e|
 |----|----|----|----|----|----|
-|V1|0|0|1|1|1|
-|V2|0|0|0|1|1|
+|V1|0|0|0|0|
 
 ## Analysis results
 
@@ -80,14 +78,14 @@
 
 ||a|b|c|d|e|
 |----|----|----|----|----|----|
-|Sym. Exec|1~|0|1|1|1|
+|Sym. Exec|1~|0|0|0|
 
 - **V2**
 
 
 ||a|b|c|d|e|
 |----|----|----|----|----|----|
-|Sym. Exec|1~|1|1|1|1|
+|Sym. Exec|1~|0|0|1~|
 
 # Auction
 
@@ -121,3 +119,19 @@
 
 # Kotet
 
+- **a** : _every time a user becomes king it must be a different user from the previous king_
+- **b** : _it is not possible for the balance of the contract to reach 0_
+- **c** : _claim_price cannot be greater than all user balances_
+- **d** : _if a call to the Kotet fallback is made with an amount greater than or equal to claim_price an exception is not raised_
+
+## Ground Truth
+
+||a|b|c|d|
+|----|----|----|----|----|
+|V1|0|0|0|0|
+
+- **V1**
+
+||a|b|c|d|
+|----|----|----|----|----|
+|Sym. Exec|0|1~|1~|0|
