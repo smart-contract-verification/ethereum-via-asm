@@ -131,8 +131,26 @@
 |----|----|----|----|----|
 |V1|0|0|0|0|
 
+## Analysis results
+
 - **V1**
 
 ||a|b|c|d|
 |----|----|----|----|----|
 |Sym. Exec|0|1~|1~|0|
+
+
+# Final Results
+
+|Contracts|Expected <br> Violations|Found <br> Violations|Impossible <br> To <br> Prove|
+|----|----|----|----|
+|Auction v1|2|2|0|
+|Auction v2|0|0|1|
+|StateDao v1|5|3|2|
+|StateDao v2|5|1|3|
+|Airdrop v1|3|3|0|
+|Airdrop v2|3|2|0|
+|Airdrop v3|3|1|0|
+|Crowdfund v1|4|3|1|
+|Crowdfund v2|4|2|2|
+|KotET v1|4|2|2|
