@@ -146,6 +146,25 @@
 |Sym. Exec|0|1~|1~|0|
 
 
+# Baz
+
+- **a** : _not all the states are set to true_
+
+## Ground Truth
+
+||a|
+|----|----|
+|V1|0|
+
+## Analysis results
+
+- **V1**
+
+||a|
+|----|----|
+|Sym. Exec|0|
+
+
 # Final Results
 
 |Contracts|Expected <br> Violations|Found <br> Violations|Impossible <br> To <br> Prove|
@@ -161,3 +180,4 @@
 |Crowdfund v2|4|2|2|
 |KotET v1|4|2|2|
 |KotET v2|4|2|2|
+|Baz|1|1|0|
