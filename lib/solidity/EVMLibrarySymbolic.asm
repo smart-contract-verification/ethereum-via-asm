@@ -16,7 +16,7 @@ signature:
 	/* USER ATTRIBUTES */
 	dynamic controlled balance : User -> Integer 
 	dynamic controlled destroyed : User -> Boolean
-	static is_contract : User -> Boolean
+	dynamic controlled is_contract : User -> Boolean
 	
 	/* METHOD ATTRIBUTE */
 	dynamic controlled payable : Function -> Boolean
@@ -54,7 +54,7 @@ signature:
 	static none : Function
 	
 	static user : User
-	static user2 : User
+
 	
 	
 
@@ -64,13 +64,6 @@ signature:
 definitions:
 	
 	
-	
-	function is_contract ($u in User) =
-		switch $u 
-			case user : false
-			case user2 : false
-			otherwise true
-		endswitch
 		
 
 	/* 

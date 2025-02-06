@@ -4,82 +4,15 @@ asm StateBasedDAOflattenedSymbolic_V2
 
 
 import ../../lib/asmeta/StandardLibrary
+import ../../lib/solidity/EVMLibrarySymbolic
 
 
 signature:	
-
-	
-
-
-
-
-
-	/* --------------------------------------------LIBRARY MODEL DOMAINS-------------------------------------------- */
-	
-	
-	
-	
-	abstract domain Function
-	abstract domain User
-	domain MoneyAmount subsetof Integer
-	domain StackLayer subsetof Integer
-	domain InstructionPointer subsetof Integer
-	
 	
 	
 	/* --------------------------------------------CONTRACT MODEL DOMANIS-------------------------------------------- */
 	
 	enum domain State = {INTRANSITION, INITIALSTATE}
-	
-	
-	/* --------------------------------------------LIBRARY MODEL FUNCTIONS-------------------------------------------- */
-	
-	/* USER ATTRIBUTES */
-	dynamic controlled balance : User -> Integer 
-	dynamic controlled destroyed : User -> Boolean
-	static is_contract : User -> Boolean
-	
-	/* METHOD ATTRIBUTE */
-	dynamic controlled payable : Function -> Boolean
-	
-	
-	/* FUNCTIONS THAT ALLOW TRANSACTIONS */
-	dynamic controlled sender : Integer -> User 
-	dynamic controlled amount : Integer -> Integer
-	
-	/* STACK MANAGEMENT */
-	dynamic controlled current_layer : Integer
-	
-	/* ALLOW FUNCTION EXECUTIONS */
-	dynamic controlled executing_function : Integer -> Function
-	dynamic controlled instruction_pointer : Integer -> Integer
-	dynamic controlled executing_contract : Integer -> User
-	
-	/* RETURN VALUES */
-	dynamic controlled boolean_return : Boolean
-	
-	/* GENERAL MONITORED FUNCTION */
-	controlled random_sender : Integer -> User
-	controlled random_user : Integer -> User
-	controlled random_function : Integer -> Function
-	controlled random_amount : Integer -> Integer
-	
-	controlled stage : Integer
-	
-	/* EXCEPTION */
-	dynamic controlled exception : Boolean
-	
-	
-	
-	/* ABSTRACT DOMAIN DEFINITION FOR EVM */
-	static none : Function
-	
-	static user : User
-	//static user2 : User
-	
-	
-	
-	
 	
 	
 	/* --------------------------------------------CONTRACT MODEL FUNCTIONS-------------------------------------------- */
@@ -102,88 +35,6 @@ signature:
 	
 	
 definitions:
-
-	/* --------------------------------------------LIBRARY MODEL-------------------------------------------- */
-
-
-	/* DOMAIN AND FUNCTION DEFINITION */
-	domain MoneyAmount = {-1 : 5}
-	domain StackLayer = {0 : 2}
-	domain InstructionPointer = {0 : 7}
-	
-	
-	
-	function is_contract ($u in User) =
-		switch $u 
-			case user : false
-			//case user2 : false
-			otherwise true
-		endswitch
-		
-
-	rule r_Transaction ($s in User, $r in User, $n in Integer, $f in Function) =
-		if $n >= 0 and balance($s) >= $n and $s != $r and ((is_contract($r) implies (not destroyed($r)))) and ((is_contract($r) and $n > 0) implies (payable($f))) then 
-			par
-				seq
-					balance($s) := balance($s) - $n
-					balance($r) := balance($r) + $n
-				endseq
-				if is_contract($r) then
-					par
-						sender(current_layer + 1) := $s // set the transition attribute to the sender user
-						amount(current_layer + 1) := $n // set the transaction attribute to the amount of coin to transfer
-						current_layer := current_layer + 1
-						executing_contract(current_layer + 1) := $r
-						executing_function(current_layer + 1) := $f
-						instruction_pointer(current_layer + 1) := 0
-						exception := false
-					endpar
-				endif
-				if is_contract($s) then 
-					instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
-				endif
-			endpar
-		else 
-			par
-				if is_contract($s) then 
-					r_Ret[]
-				endif
-				exception := true
-			endpar
-		endif
-		
-	/* 
-	 * RETURN RULE
-	 */
-	macro rule r_Ret =
-		current_layer := current_layer - 1 
-		
-	/*
-	 * REQUIRE RULE
-	 */
-	macro rule r_Require ($b in Boolean) = 
-		let ($cl = current_layer) in
-			if $b then
-				instruction_pointer($cl) := instruction_pointer($cl) + 1
-			else 
-				par
-					r_Ret[]
-					exception := true
-				endpar
-			endif
-		endlet
-		
-		
-	macro rule r_Selfdestruct ($u in User) =
-		if is_contract(executing_contract(current_layer)) then
-			par
-				balance(executing_contract(current_layer)) := 0
-				balance($u) := balance($u) + balance(executing_contract(current_layer))
-				destroyed(executing_contract(current_layer)) := true
-				r_Ret[]
-			endpar
-		endif
-		
 	
 	
 	/* --------------------------------------------CONTRACT MODEL-------------------------------------------- */
@@ -282,22 +133,22 @@ definitions:
 		
 
 	/*
-	 * INVARIANT
+	 * INVARIANT S_30
 	 */
 	 
-	// if there was no exception and the contract is not running, the contract's state is INITIALSTATE
+	// if there was no exception and the contract is not running, the contract's state is INITIALSTATE - 
 	invariant over state : ((current_layer = 0 and not exception) implies (state = INITIALSTATE))
 	
-	//se viene fatta una chiamata a deposit con un valore di msg.sender maggiore di 0 allora non alza un eccezione
+	//se viene fatta una chiamata a deposit con un valore di msg.sender maggiore di 0 allora non alza un eccezione - ~ S_8
 	invariant over exception : ((executing_contract(1) = state_dao) and (executing_function(1) = deposit) and (amount(1) > 0) and state = INITIALSTATE) implies (exception = false)
 	
-	// non viene alzata una eccezione anche se viene fatta una chiamata a deposit e il balance di state_dao è maggiore o uguale di 12
+	// non viene alzata una eccezione anche se viene fatta una chiamata a deposit e il balance di state_dao è maggiore o uguale di 12 - S_4
 	invariant over exception : ((executing_contract(1) = state_dao and executing_function(1) = deposit and balance(state_dao) >= 12) implies (exception = false))
 	
-	// esiste sempre almeno un balance che sia maggiore del corrispettivo customer_balance
+	// esiste sempre almeno un balance che sia maggiore del corrispettivo customer_balance - ~ S_1
 	invariant over balance : (exist $u in User with (not is_contract($u)) and customer_balance($u) < balance($u))
 	
-	// il balance di state_dao è sempre minore o uguale a 12
+	// il balance di state_dao è sempre minore o uguale a 12 -  S_7
 	invariant over balance : (current_layer = 0 and not exception) implies balance(state_dao) < 12
 	
 	
@@ -309,7 +160,7 @@ definitions:
 			if current_layer = 0 then
 				if not exception then
 					let ($s = random_sender(stage)) in
-						let ($r = random_user(stage)) in 
+						let ($r = random_receiver(stage)) in 
 							let ($n = random_amount(stage)) in 
 								let($f = random_function(stage)) in
 									if not is_contract($s) then
@@ -360,6 +211,13 @@ default init s0:
 	function exception = false
 	
 	function stage = 0
+	
+	function is_contract ($u in User) =
+		switch $u 
+			case user : false
+			otherwise true
+		endswitch
+	
 	
 	
 	/*

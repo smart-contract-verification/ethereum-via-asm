@@ -26,6 +26,8 @@ signature:
 	static auction : User
 	static undef_user : User
 	
+	static user2 : User
+	
 	static bid : Function
 	static destroy : Function
 	
@@ -192,6 +194,13 @@ default init s0:
 	function exception = false
 	
 	function stage = 0
+	
+	function is_contract ($u in User) =
+		switch $u 
+			case user : false
+			case user2 : false
+			otherwise true
+		endswitch
 	
 	
 	/*
