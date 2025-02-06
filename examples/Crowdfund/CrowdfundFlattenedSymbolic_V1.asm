@@ -141,16 +141,16 @@ definitions:
 	/*
 	 * INVARIANT - S_24
 	 */
-	// se viene fatta una chiamata a donate, e non sono state sollevate eccezioni, allora donors(msg.sender) è maggiore di 0 - ~ S_4
+	// if a call to donate is made, and no exceptions have been raised, then donors(msg.sender) is greater than 0 - ~ S_4
 	invariant over donors : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = donate and sender(1) = user and not exception) implies (donors(user) > 0)
 	
-	// anche se viene fatta una chiamata a donate e la fase di donazione è finita, non viene sollevata un eccezione - S_4
+	// even if a call to donate is made and the donation phase is over, an exception is not raised - S_4
 	invariant over exception : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = donate and block_number > end_donate) implies (not exception)
 
-	// se viene completata una chiamata a withdraw senza che siano state alzate eccezioni, allora il sender era l'owner del contratto - S_7
+	// if a call to withdraw completes without any exceptions being raised, then the sender was the owner of the contract - S_7
 	invariant over owner : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = withdraw and not exception) implies (sender(1) = owner)
 	
-	// dopo una chiamata a reclaim, se non vengono sollevate eccezioni, allora il valore di donors per il sender è 0 - S_10
+	// after a call to reclaim, if no exceptions are raised, then the value of donors for the sender is 0 - S_10
 	invariant over exception : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = reclaim and not exception) implies (donors(sender(1)) = 0)
 	
 	/*

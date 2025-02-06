@@ -88,10 +88,10 @@ definitions:
 	// se viene fatta una chiamata a receive_airdrop e non sono state alzate eccezioni, il valore per msg.sender di received_airdrop rimane true - S_5
 	invariant over received_airdrop : (current_layer = 0 and executing_contract(1) = airdrop and executing_function(1) = receive_airdrop and not exception and sender(1) = user)implies(not received_airdrop(user))
 	
-	// se viene fatta una chiamata a receive_airdrop da un account con received_airdrop a 0, non viene sollevata un eccezione - S_3
+	// if a call to receive_airdrop is made from an account with received_airdrop set to 0, an exception is not raised - S_3
 	invariant over exception : (current_layer = 0 and executing_contract(1) = airdrop and executing_function(1) = receive_airdrop and sender(1) = user and not old_received_airdrop(user)) implies (not exception)
 	
-	// è impossibile che tutti gli utenti che non siano contratti ricevano l'airdrop - S_4
+	// not all users received the airdrop - S_4
 	invariant over user_balance : not (forall $u in User with (not is_contract($u)) implies received_airdrop($u))
 		
 	/*

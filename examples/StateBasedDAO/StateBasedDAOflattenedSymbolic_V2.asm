@@ -139,16 +139,16 @@ definitions:
 	// if there was no exception and the contract is not running, the contract's state is INITIALSTATE - 
 	invariant over state : ((current_layer = 0 and not exception) implies (state = INITIALSTATE))
 	
-	//se viene fatta una chiamata a deposit con un valore di msg.sender maggiore di 0 allora non alza un eccezione - ~ S_8
+	// if a call to deposit is made with a msg.sender value greater than 0 then it does not raise an exception - ~ S_8
 	invariant over exception : ((executing_contract(1) = state_dao) and (executing_function(1) = deposit) and (amount(1) > 0) and state = INITIALSTATE) implies (exception = false)
 	
-	// non viene alzata una eccezione anche se viene fatta una chiamata a deposit e il balance di state_dao è maggiore o uguale di 12 - S_4
+	// an exception is not raised even if a call to deposit is made and the balance of state_dao is greater or equal than 12 - S_4
 	invariant over exception : ((executing_contract(1) = state_dao and executing_function(1) = deposit and balance(state_dao) >= 12) implies (exception = false))
 	
-	// esiste sempre almeno un balance che sia maggiore del corrispettivo customer_balance - ~ S_1
+	// there is always at least one balance that is greater than the corresponding customer_balance - ~ S_1
 	invariant over balance : (exist $u in User with (not is_contract($u)) and customer_balance($u) < balance($u))
 	
-	// il balance di state_dao è sempre minore o uguale a 12 -  S_7
+	// if there was no exception and the contract is not running, the balance of state_dao is less than 12 -  S_7
 	invariant over balance : (current_layer = 0 and not exception) implies balance(state_dao) < 12
 	
 	
