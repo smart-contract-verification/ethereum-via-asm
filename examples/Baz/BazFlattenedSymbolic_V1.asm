@@ -297,7 +297,6 @@ definitions:
 	 */
 	 
 	 invariant over state1, state2, state3, state4, state5 : ((not state1) or (not state2) or (not state3) or (not state4) or (not state5))
-	 //invariant over state1, state2, state3, state4, state5 : not state4
 
 	/*
 	 * MAIN 
