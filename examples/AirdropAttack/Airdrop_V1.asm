@@ -1,4 +1,4 @@
-asm AirdropFlattenedSymbolic_V1
+asm Airdrop_V1
 
 
 

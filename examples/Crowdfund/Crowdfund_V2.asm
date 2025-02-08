@@ -1,4 +1,4 @@
-asm CrowdfundFlattenedSymbolic_V1
+asm Crowdfund_V2
 
 
 
@@ -6,9 +6,7 @@ asm CrowdfundFlattenedSymbolic_V1
 import ../../lib/asmeta/StandardLibrary
 import ../../lib/solidity/EVMLibrarySymbolic
 
-
 signature:	
-	
 	
 	/* --------------------------------------------CONTRACT MODEL FUNCTIONS-------------------------------------------- */
 
@@ -39,6 +37,7 @@ signature:
 	
 	
 definitions:
+	
 	
 	/* --------------------------------------------CONTRACT MODEL-------------------------------------------- */
 
@@ -102,7 +101,7 @@ definitions:
 					endpar
 				case 4 :
 					par
-						donors(sender(current_layer)) := 1
+						local_amount(current_layer) := 0
 						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1 
 					endpar
 				case 5 : 
@@ -137,7 +136,7 @@ definitions:
 		
 	/* --------------------------------------------MAIN AND INVARIANTS-------------------------------------------- */
 		
-
+	
 	/*
 	 * INVARIANT - S_24
 	 */
@@ -150,7 +149,7 @@ definitions:
 	// if a call to withdraw completes without any exceptions being raised, then the sender was the owner of the contract - S_7
 	invariant over owner : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = withdraw and not exception) implies (sender(1) = owner)
 	
-	// after a call to reclaim, if no exceptions are raised, then the value of donors for the sender is 0 - S_10
+	// after a call to reclaim, if no exceptions are raised, then the value of donors for the sender is 0 - S_13
 	invariant over exception : (current_layer = 0 and executing_contract(1) = crowdfund and executing_function(1) = reclaim and not exception) implies (donors(sender(1)) = 0)
 	
 	/*
@@ -222,7 +221,7 @@ default init s0:
 	function exception = false
 	
 	function stage = 0
-
+	
 	function is_contract ($u in User) =
 		switch $u 
 			case user : false

@@ -1,4 +1,4 @@
-asm StateBasedDAOflattenedSymbolic_V1
+asm StateDAO_V2
 
 
 
@@ -8,6 +8,7 @@ import ../../lib/solidity/EVMLibrarySymbolic
 
 
 signature:	
+	
 	
 	/* --------------------------------------------CONTRACT MODEL DOMANIS-------------------------------------------- */
 	
@@ -27,12 +28,13 @@ signature:
 	
 	static deposit : Function
 	static withdraw : Function 
+	
+	
 
 
 	
 	
 definitions:
-		
 	
 	
 	/* --------------------------------------------CONTRACT MODEL-------------------------------------------- */
@@ -134,7 +136,7 @@ definitions:
 	 * INVARIANT S_30
 	 */
 	 
-	// if there was no exception and the contract is not running, the contract's state is INITIALSTATE - S_20
+	// if there was no exception and the contract is not running, the contract's state is INITIALSTATE - 
 	invariant over state : ((current_layer = 0 and not exception) implies (state = INITIALSTATE))
 	
 	// if a call to deposit is made with a msg.sender value greater than 0 then it does not raise an exception - ~ S_8
@@ -146,8 +148,9 @@ definitions:
 	// there is always at least one balance that is greater than the corresponding customer_balance - ~ S_1
 	invariant over balance : (exist $u in User with (not is_contract($u)) and customer_balance($u) < balance($u))
 	
-	// if there was no exception and the contract is not running, the balance of state_dao is less than 12 - S_20
+	// if there was no exception and the contract is not running, the balance of state_dao is less than 12 -  S_7
 	invariant over balance : (current_layer = 0 and not exception) implies balance(state_dao) < 12
+	
 	
 	/*
 	 * MAIN 
@@ -196,7 +199,7 @@ default init s0:
 	function executing_contract ($cl in Integer) = user
 	function instruction_pointer ($sl in Integer) = 0
 	function current_layer = 0
-	function balance($c in User) = 10
+	function balance($c in User) = 11
 	function destroyed($u in User) = false
 	function payable($f in Function) = 
 		switch $f
@@ -214,6 +217,8 @@ default init s0:
 			case user : false
 			otherwise true
 		endswitch
+	
+	
 	
 	/*
 	 * MODEL FUNCTION INITIALIZATION

@@ -1,4 +1,4 @@
-asm AuctionFlattenedSymbolic_V2
+asm Auction_V1
 
 
 
@@ -37,7 +37,7 @@ signature:
 	
 	
 definitions:
-
+	
 	
 	/* --------------------------------------------CONTRACT MODEL-------------------------------------------- */
 
@@ -49,11 +49,7 @@ definitions:
 		if executing_function(current_layer) = destroy then
 			switch instruction_pointer(current_layer)
 				case 0 : 
-					if sender(current_layer) = owner then
-						r_Selfdestruct[owner]
-					else
-						r_Require[false]
-					endif
+					r_Selfdestruct[owner]
 			endswitch
 		endif
 		
@@ -117,7 +113,7 @@ definitions:
 	 * INVARIANT
 	 */
 
-	// The destroy function can only be called by the owner of the contract
+	// The destroy function can only be called by the owner of the contract - S_2
 	invariant over sender : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = destroy and not exception and destroyed(auction)) implies (sender(1) = owner)
 	
 	// If a call is made to the bid function and a current_frontrunner already exists, the previously deposited money is returned to it
@@ -126,8 +122,8 @@ definitions:
 	// if I make a call to the bid function with a msg.value greater than current_bid then I become the new current_frontrunner
 	invariant over balance : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = bid and amount(1) > old_bid and not exception) implies (currentFrontrunner = sender(1))
 	
-	// if a call is made to the destroy function, all the money in the contract goes to the owner
-	invariant over balance : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = destroy and not exception) implies (old_balance(user2) + old_balance(auction) = balance(user2))
+	// if a call is made to the destroy function, all the money in the contract goes to the owner - S_2
+	invariant over balance : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = destroy and not exception) implies (old_balance(user) + old_balance(auction) = balance(user))
 
 
 	/*
@@ -141,7 +137,7 @@ definitions:
 						let ($r = random_receiver(stage)) in
 							let ($n = random_amount(stage)) in 
 								let ($f = random_function(stage)) in
-									if not is_contract($s) then
+									if (not is_contract($s)) then
 										par
 											r_Transaction[$s, $r, $n, $f]
 											old_bid := currentBid
