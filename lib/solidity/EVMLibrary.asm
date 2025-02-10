@@ -1,4 +1,4 @@
-module EVMLibrarySymbolic
+module EVMLibrary
 
 
 import ../asmeta/StandardLibrary
