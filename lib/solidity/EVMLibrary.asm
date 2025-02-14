@@ -86,16 +86,14 @@ definitions:
 					balance($s) := balance($s) - $n 
 					balance($r) := balance($r) + $n
 				endseq
+				sender(current_layer + 1) := $s // set the transition attribute to the sender user
+				amount(current_layer + 1) := $n // set the transaction attribute to the amount of coin to transfer
+				executing_contract(current_layer + 1) := $r
+				executing_function(current_layer + 1) := $f
+				instruction_pointer(current_layer + 1) := 0
+				exception := false
 				if is_contract($r) then
-					par
-						sender(current_layer + 1) := $s // set the transition attribute to the sender user
-						amount(current_layer + 1) := $n // set the transaction attribute to the amount of coin to transfer
-						current_layer := current_layer + 1
-						executing_contract(current_layer + 1) := $r
-						executing_function(current_layer + 1) := $f
-						instruction_pointer(current_layer + 1) := 0
-						exception := false
-					endpar
+					current_layer := current_layer + 1
 				endif
 				if is_contract($s) then 
 					instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1

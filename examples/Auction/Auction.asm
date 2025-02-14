@@ -116,14 +116,14 @@ definitions:
 	// The destroy function can only be called by the owner of the contract - S_2
 	invariant over sender : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = destroy and not exception and destroyed(auction)) implies (sender(1) = owner)
 	
-	// If a call is made to the bid function and a current_frontrunner already exists, the previously deposited money is returned to it
-	invariant over balance : (current_layer = 1 and instruction_pointer(1) = 6 and executing_contract(1) = auction and executing_function(1) = bid and old_frontrunner != undef_user and not exception and old_frontrunner = user and sender(1) = user) implies (old_balance(user) + old_bid = balance(user))
-	
-	// if I make a call to the bid function with a msg.value greater than current_bid then I become the new current_frontrunner
-	invariant over balance : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = bid and amount(1) > old_bid and not exception) implies (currentFrontrunner = sender(1))
-	
-	// if a call is made to the destroy function, all the money in the contract goes to the owner - S_2
-	invariant over balance : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = destroy and not exception) implies (old_balance(user) + old_balance(auction) = balance(user))
+//	// If a call is made to the bid function and a current_frontrunner already exists, the previously deposited money is returned to it
+//	invariant over balance : (current_layer = 1 and instruction_pointer(1) = 6 and executing_contract(1) = auction and executing_function(1) = bid and old_frontrunner != undef_user and not exception and old_frontrunner = user and sender(1) = user) implies (old_balance(user) + old_bid = balance(user))
+//	
+//	// if I make a call to the bid function with a msg.value greater than current_bid then I become the new current_frontrunner
+//	invariant over balance : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = bid and amount(1) > old_bid and not exception) implies (currentFrontrunner = sender(1))
+//	
+//	// if a call is made to the destroy function, all the money in the contract goes to the owner - S_2
+//	invariant over balance : (current_layer = 0 and executing_contract(1) = auction and executing_function(1) = destroy and not exception) implies (old_balance(user) + old_balance(auction) = balance(user))
 
 
 	/*

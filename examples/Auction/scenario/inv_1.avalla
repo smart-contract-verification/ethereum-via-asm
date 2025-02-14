@@ -1,0 +1,11 @@
+scenario inv_1
+load ../Auction.asm
+
+
+set random_sender := user;
+set random_receiver := auction;
+set random_amount := 0;
+set random_function := destroy;
+step
+step
+step
