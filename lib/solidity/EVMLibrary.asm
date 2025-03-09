@@ -65,7 +65,7 @@ signature:
 definitions:
 	
 
-    domain MoneyAmount = {-1 : 7}
+    domain MoneyAmount = {-1 : 13}
 	domain StackLayer = {0 : 2}
 	domain InstructionPointer = {0 : 7}
 	domain GeneralInteger = {-10 : 10}
@@ -82,12 +82,10 @@ definitions:
 	rule r_Transaction ($s in User, $r in User, $n in MoneyAmount, $f in Function) =
 		if $n >= 0 and balance($s) >= $n and $s != $r and ((is_contract($r) implies (not destroyed($r)))) and ((is_contract($r) and $n > 0) implies (payable($f))) then 
 			par
-				seq
-					balance($s) := balance($s) - $n 
-					balance($r) := balance($r) + $n
-				endseq
-				sender(current_layer + 1) := $s // set the transition attribute to the sender user
-				amount(current_layer + 1) := $n // set the transaction attribute to the amount of coin to transfer
+				balance($s) := balance($s) - $n 
+				balance($r) := balance($r) + $n
+				sender(current_layer + 1) := $s 
+				amount(current_layer + 1) := $n
 				executing_contract(current_layer + 1) := $r
 				executing_function(current_layer + 1) := $f
 				instruction_pointer(current_layer + 1) := 0
@@ -102,7 +100,7 @@ definitions:
 		else 
 			par
 				if is_contract($s) then 
-					r_Ret[]
+					instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
 				endif
 				exception := true
 			endpar

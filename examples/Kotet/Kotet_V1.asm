@@ -4,7 +4,7 @@ asm Kotet_V1
 
 
 import ../../lib/asmeta/StandardLibrary
-import ../../lib/solidity/EVMLibrarySymbolic
+import ../../lib/solidity/EVMLibrary
 
 
 signature:	
@@ -14,10 +14,10 @@ signature:
 	/* --------------------------------------------CONTRACT MODEL FUNCTIONS-------------------------------------------- */
 
 	dynamic controlled king : User
-	dynamic controlled claim_price : Integer
+	dynamic controlled claim_price : MoneyAmount
 	
 	dynamic controlled old_king : User
-	dynamic controlled old_claim_price  : Integer
+	dynamic controlled old_claim_price  : MoneyAmount
 	
 	static kotET : User
 	static initial_king : User
@@ -77,7 +77,7 @@ definitions:
 	 invariant over balance : (not exception) implies balance(kotET) > 0
 	 	 
 	 // claim price non può essere maggiore di tutti i balance degli utenti - ~ S_0
-	 invariant over claim_price : not (forall $u in User with balance($u) < claim_price )
+	 invariant over claim_price : not (forall $u in User with ($u != kotET) implies (balance($u) < claim_price) )
 	 
 	 // se viene fatta una chiamata alla fallback di Kotet con un amount maggiore o uguale a claim_price non viene sollevata un eccezione - S_3
 	 invariant over king : (current_layer = 0 and executing_contract(1) = kotET and amount(1) >= old_claim_price) implies (not exception)
@@ -89,28 +89,27 @@ definitions:
 	 * MAIN 
 	 */ 
 	main rule r_Main = 
-		par
-			if current_layer = 0 then
-				if not exception then
-					let ($r = random_receiver(stage)) in
-						let ($n = random_amount(stage)) in 
-							let ($f = random_function(stage)) in
+		if current_layer = 0 then
+			if not exception then
+				let ($s = random_sender) in
+					let ($r = random_receiver) in
+						let ($n = random_amount) in 
+							let ($f = random_function) in
 								par
-									r_Transaction[user, $r, $n, $f]
+									r_Transaction[$s, $r, $n, $f]
 									old_king := king
 									old_claim_price := claim_price
 								endpar
 							endlet
 						endlet
 					endlet
-				endif
-			else
-				if executing_contract(current_layer) = kotET then
-					r_Fallback[]
-				endif
+				endlet
 			endif
-			stage := stage + 1
-		endpar
+		else
+			if executing_contract(current_layer) = kotET then
+				r_Fallback[]
+			endif
+		endif
 			
 
 
@@ -122,16 +121,14 @@ default init s0:
 	/*
 	 * LIBRARY FUNCTION INITIZLIZATIONS
 	 */
-	function executing_function ($sl in Integer) = none
-	function executing_contract ($cl in Integer) = user
-	function instruction_pointer ($sl in Integer) = 0
+	function executing_function ($sl in StackLayer) = none
+	function executing_contract ($cl in StackLayer) = user
+	function instruction_pointer ($sl in StackLayer) = 0
 	function current_layer = 0
-	//function balance($c in User) = 3
+	function balance($c in User) = 5
 	function destroyed($u in User) = false
 	function payable($f in Function) = true
 	function exception = false
-	
-	function stage = 0
 	
 	function is_contract ($u in User) =
 		switch $u 
@@ -147,6 +144,9 @@ default init s0:
 	 
 	function king = initial_king 
 	function claim_price = 1
+	
+	function old_king = user
+	function old_claim_price = 0
 		
 
 	

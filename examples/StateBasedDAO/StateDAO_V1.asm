@@ -4,7 +4,7 @@ asm StateDAO_V1
 
 
 import ../../lib/asmeta/StandardLibrary
-import ../../lib/solidity/EVMLibrarySymbolic
+import ../../lib/solidity/EVMLibrary
 
 
 signature:	
@@ -17,7 +17,7 @@ signature:
 	/* --------------------------------------------CONTRACT MODEL FUNCTIONS-------------------------------------------- */
 
 	/* CONTRACT ATTRIBUTES */
-	dynamic controlled customer_balance : User -> Integer 
+	dynamic controlled customer_balance : User -> MoneyAmount 
 	
 	dynamic controlled state : State
 	
@@ -153,34 +153,32 @@ definitions:
 	 * MAIN 
 	 */ 
 	main rule r_Main = 
-		par	
-			if current_layer = 0 then
-				if not exception then
-					let ($s = random_sender(stage)) in
-						let ($r = random_receiver(stage)) in 
-							let ($n = random_amount(stage)) in 
-								let($f = random_function(stage)) in
-									if not is_contract($s) then
-										r_Transaction[$s, $r, $n, $f]
-									else
-										exception := true
-									endif
-								endlet
+		if current_layer = 0 then
+			if not exception then
+				let ($s = random_sender) in
+					let ($r = random_receiver) in 
+						let ($n = random_amount) in 
+							let($f = random_function) in
+								if not is_contract($s) then
+									r_Transaction[$s, $r, $n, $f]
+								else
+									exception := true
+								endif
 							endlet
 						endlet
 					endlet
-				endif
-			else
-				if executing_contract(current_layer) = state_dao then
-					par 
-						r_Deposit[]
-						r_Withdraw[]
-						r_Fallback[]
-					endpar
-				endif
+				endlet
 			endif
-			stage := stage + 1
-		endpar
+		else
+			if executing_contract(current_layer) = state_dao then
+				par 
+					r_Deposit[]
+					r_Withdraw[]
+					r_Fallback[]
+				endpar
+			endif
+		endif
+
 			
 
 
@@ -192,9 +190,9 @@ default init s0:
 	/*
 	 * LIBRARY FUNCTION INITIZLIZATIONS
 	 */
-	function executing_function ($sl in Integer) = none
-	function executing_contract ($cl in Integer) = user
-	function instruction_pointer ($sl in Integer) = 0
+	function executing_function ($sl in StackLayer) = none
+	function executing_contract ($cl in StackLayer) = user
+	function instruction_pointer ($sl in StackLayer) = 0
 	function current_layer = 0
 	function balance($c in User) = 10
 	function destroyed($u in User) = false
@@ -206,8 +204,6 @@ default init s0:
 			otherwise false
 		endswitch
 	function exception = false
-	
-	function stage = 0
 	
 	function is_contract ($u in User) =
 		switch $u 

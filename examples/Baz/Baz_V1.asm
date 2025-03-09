@@ -4,7 +4,7 @@ asm Baz_V1
 
 
 import ../../lib/asmeta/StandardLibrary
-import ../../lib/solidity/EVMLibrarySymbolic
+import ../../lib/solidity/EVMLibrary
 
 
 signature:	
@@ -18,15 +18,15 @@ signature:
 	dynamic controlled state4 : Boolean
 	dynamic controlled state5 : Boolean
 	
-	controlled a_mon : Integer -> Integer
-	controlled b_mon : Integer -> Integer
-	controlled c_mon : Integer -> Integer
+	monitored a_mon : GeneralInteger
+	monitored b_mon : GeneralInteger
+	monitored c_mon : GeneralInteger
 	
-	controlled a : Integer
-	controlled b : Integer
-	controlled c : Integer
+	controlled a : GeneralInteger
+	controlled b : GeneralInteger
+	controlled c : GeneralInteger
 	
-	controlled d : Integer
+	controlled d : GeneralInteger
 
 
 	/* USER and METHODS */
@@ -57,9 +57,9 @@ definitions:
 			switch instruction_pointer(current_layer)
 				case 0 : 
 					par
-						a := a_mon(stage)
-						b := b_mon(stage)
-						c := c_mon(stage)
+						a := a_mon
+						b := b_mon
+						c := c_mon
 						instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
 					endpar
 				case 1 :
@@ -146,27 +146,24 @@ definitions:
 	 * MAIN 
 	 */ 
 	main rule r_Main = 
-		par
-			if current_layer = 0 then
-				if not exception then
-					let ($r = random_receiver(stage)) in
-						let ($n = random_amount(stage)) in 
-							let ($f = random_function(stage)) in
-								r_Transaction[user, $r, $n, $f]
-							endlet
+		if current_layer = 0 then
+			if not exception then
+				let ($r = random_receiver) in
+					let ($n = random_amount) in 
+						let ($f = random_function) in
+							r_Transaction[user, $r, $n, $f]
 						endlet
 					endlet
-				endif
-			else
-				if executing_contract(current_layer) = u_baz then
-					par 
-						r_Baz[]
-						r_Fallback[]
-					endpar
-				endif
+				endlet
 			endif
-			stage := stage + 1
-		endpar
+		else
+			if executing_contract(current_layer) = u_baz then
+				par 
+					r_Baz[]
+					r_Fallback[]
+				endpar
+			endif
+		endif
 			
 
 
@@ -178,9 +175,9 @@ default init s0:
 	/*
 	 * LIBRARY FUNCTION INITIZLIZATIONS
 	 */
-	function executing_function ($sl in Integer) = none
-	function executing_contract ($cl in Integer) = user
-	function instruction_pointer ($sl in Integer) = 0
+	function executing_function ($sl in StackLayer) = none
+	function executing_contract ($cl in StackLayer) = user
+	function instruction_pointer ($sl in StackLayer) = 0
 	function current_layer = 0
 	function balance($c in User) = 3
 	function destroyed($u in User) = false
@@ -190,8 +187,6 @@ default init s0:
 			otherwise false
 		endswitch
 	function exception = false
-	
-	function stage = 0
 	
 	function is_contract ($u in User) =
 		switch $u 

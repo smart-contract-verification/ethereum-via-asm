@@ -18,13 +18,15 @@
 
 ||a|b|c|d|e|
 |----|----|----|----|----|----|
-|Sym. Exec|0|1~|0|1~|0
+|Sym. Exec|0|1~|0|1~|0|
+|NuSMV|0|0|0|0|0|
 
 - **V2**
 
 ||a|b|c|d|e|
 |----|----|----|----|----|----|
 |Sym. Exec|1|1~|0|1~|1~|
+|NuSMV|0|0|0|0|0|
 
 # Airdrop
 - **a** : _Even if a call to receive_airdrop is made and no exceptions are raised, the value for msg.sender of received_airdrop remains false_
@@ -44,18 +46,21 @@
 ||a|b|c|
 |----|----|----|----|
 |Sym. Exec|0|0|0|
+|Sym. Exec|0|0|0|
 
 - **V2**
 
 ||a|b|c|
 |----|----|----|----|
 |Sym. Exec|0|0|1|
+|Sym. Exec|0|0|0|
 
 - **V3**
 
 ||a|b|c|
 |----|----|----|----|
 |Sym. Exec|1|0|1|
+|Sym. Exec|0|0|0|
 
 
 
@@ -110,12 +115,14 @@
 ||a|b|c|d|
 |----|----|----|----|----|
 |Sym. Exec|0|1|1|0|
+|NuSMV|0|1|1|0|
 
 - **V2**
 
 ||a|b|c|d|
 |----|----|----|----|----|
 |Sym. Exec|1|1|1|1~|
+|Sym. Exec|1|1|1|1|
 
 
 # Kotet
@@ -129,7 +136,8 @@
 
 ||a|b|c|d|
 |----|----|----|----|----|
-|V1|0|0|0|0|
+|V1|0|0|1|0|
+|V2|0|0|0|0|
 
 ## Analysis results
 
@@ -138,12 +146,14 @@
 ||a|b|c|d|
 |----|----|----|----|----|
 |Sym. Exec|0|1~|1~|0|
+|NuSMV|0|0|0|0|
 
 - **V2**
 
 ||a|b|c|d|
 |----|----|----|----|----|
 |Sym. Exec|0|1~|1~|0|
+|NuSMV|0|0|0|0|
 
 
 # Baz
@@ -163,6 +173,7 @@
 ||a|
 |----|----|
 |Sym. Exec|0|
+|NuSMV|1|
 
 
 # Final Results

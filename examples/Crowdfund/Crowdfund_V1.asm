@@ -4,7 +4,7 @@ asm Crowdfund_V1
 
 
 import ../../lib/asmeta/StandardLibrary
-import ../../lib/solidity/EVMLibrarySymbolic
+import ../../lib/solidity/EVMLibrary
 
 
 signature:	
@@ -12,18 +12,18 @@ signature:
 	
 	/* --------------------------------------------CONTRACT MODEL FUNCTIONS-------------------------------------------- */
 
-	dynamic controlled end_donate : Integer
-	dynamic controlled goal : Integer
+	dynamic controlled end_donate : GeneralInteger
+	dynamic controlled goal : MoneyAmount
 	dynamic controlled owner : User
-	dynamic controlled donors : User -> Integer
+	dynamic controlled donors : User -> MoneyAmount
 	
-	dynamic controlled local_amount : Integer -> Integer
+	dynamic controlled local_amount : StackLayer -> MoneyAmount
 	
 	
-	dynamic controlled block_number : Integer
+	dynamic controlled block_number : GeneralInteger
 	
-	dynamic controlled old_balance : User -> Integer
-	dynamic controlled old_donors : User -> Integer
+	dynamic controlled old_balance : User -> MoneyAmount
+	dynamic controlled old_donors : User -> MoneyAmount
 	
 	
 	static crowdfund : User
@@ -157,43 +157,41 @@ definitions:
 	 * MAIN 
 	 */ 
 	main rule r_Main = 
-		par
-			if current_layer = 0 then
-				if not exception then
-					let ($s = user) in
-						let ($r = random_receiver(stage)) in
-							let ($n = random_amount(stage)) in 
-								let ($f = random_function(stage)) in
-									if not is_contract($s) then
-										par
-											block_number := block_number + 1
-											r_Transaction[$s, $r, $n, $f]
-											forall $u in User with true do
-												par
-													old_balance($u) := balance($u)
-													old_donors($u) := donors($u)
-												endpar
-										endpar
-									else 
-										exception := false
-									endif
-								endlet
+		if current_layer = 0 then
+			if not exception then
+				let ($s = user) in
+					let ($r = random_receiver) in
+						let ($n = random_amount) in 
+							let ($f = random_function) in
+								if not is_contract($s) then
+									par
+										block_number := block_number + 1
+										r_Transaction[$s, $r, $n, $f]
+										forall $u in User with true do
+											par
+												old_balance($u) := balance($u)
+												old_donors($u) := donors($u)
+											endpar
+									endpar
+								else 
+									exception := false
+								endif
 							endlet
 						endlet
 					endlet
-				endif
-			else
-				if executing_contract(current_layer) = crowdfund then
-					par 
-						r_Donate[]
-						r_Withdraw[]
-						r_Reclaim[]
-						r_Fallback[]
-					endpar
-				endif
+				endlet
 			endif
-			stage := stage + 1
-		endpar
+		else
+			if executing_contract(current_layer) = crowdfund then
+				par 
+					r_Donate[]
+					r_Withdraw[]
+					r_Reclaim[]
+					r_Fallback[]
+				endpar
+			endif
+		endif
+
 			
 
 
@@ -205,11 +203,11 @@ default init s0:
 	/*
 	 * LIBRARY FUNCTION INITIZLIZATIONS
 	 */
-	function executing_function ($sl in Integer) = none
-	function executing_contract ($cl in Integer) = user
-	function instruction_pointer ($sl in Integer) = 0
+	function executing_function ($sl in StackLayer) = none
+	function executing_contract ($cl in StackLayer) = user
+	function instruction_pointer ($sl in StackLayer) = 0
 	function current_layer = 0
-	//function balance($c in User) = 3
+	function balance($c in User) = 3
 	function destroyed($u in User) = false
 	function payable($f in Function) = 
 		switch $f
@@ -220,8 +218,6 @@ default init s0:
 			otherwise false
 		endswitch
 	function exception = false
-	
-	function stage = 0
 
 	function is_contract ($u in User) =
 		switch $u 
@@ -235,7 +231,7 @@ default init s0:
 	 */
 	function owner = user2
 	function end_donate = 2
-	function goal = 10
+	function goal = 5
 	
 	function donors ($u in User) = 0
 	
