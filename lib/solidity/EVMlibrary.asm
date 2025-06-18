@@ -18,7 +18,7 @@ signature:
 	/* USER ATTRIBUTES */
 	dynamic controlled balance : Prod(User, StackLayer) -> MoneyAmount 
 	dynamic controlled disabled : Prod(User, StackLayer) -> Boolean
-	derived is_contract : User -> Boolean
+	static is_contract : User -> Boolean
 
 	
 	/* FUNCTIONS THAT ALLOW TRANSACTIONS */
@@ -52,8 +52,6 @@ signature:
 	static none : Function
 	
 	static user : User
-	
-
 	
 
 
@@ -117,9 +115,7 @@ definitions:
 			receiver(current_layer + 1) := $r 
 			amount(current_layer + 1) := $n
 			function_call(current_layer + 1) := $f
-			
 			r_Save_Env[global_state_layer + 1]
-			global_state_layer := global_state_layer + 1
 		endpar
 		
 		
@@ -148,12 +144,12 @@ definitions:
 			endif
 		endlet
 		
-	macro rule r_Autodestroy ($u in User) = 
+	macro rule r_Selfdestruct ($u in User) = 
 		par
 			balance($u, global_state_layer) := balance($u, global_state_layer) + balance(executing_contract(current_layer), global_state_layer)
 			balance(executing_contract(current_layer), global_state_layer) := 0
 			disabled(executing_contract(current_layer), global_state_layer) := true
-			instruction_pointer(current_layer) := instruction_pointer(current_layer) + 1
+			r_Ret[]
 		endpar
 
 		

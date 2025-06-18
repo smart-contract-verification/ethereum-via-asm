@@ -1,9 +1,9 @@
-asm Auction
+asm Auction_V1
 
 import ../../lib/asmeta/StandardLibrary
 import ../../lib/asmeta/CTLlibrary
 import ../../lib/solidity/EVMlibrary
-import ../../lib/attackers/SimpleKingOfEtherThroneAttack
+import ../../lib/attackers/SelfdestructAttacker
 
 signature:
 
@@ -34,7 +34,7 @@ definitions:
 		if executing_function(current_layer) = destroy then
 			switch instruction_pointer(current_layer)
 				case 0 : 
-					r_Autodestroy[user_owner]
+					r_Selfdestruct[user_owner]
 				case 1 : 
 					r_Ret[]
 			endswitch
